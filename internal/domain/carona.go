@@ -54,9 +54,9 @@ func (carona Carona) PrecosEntre(origem string, destino string) (int64, error) {
 		return 0, err
 	}
 
-	precoTotal := 0
+	var precoTotal int64
 	for _, trecho := range trechos {
-		precoTotal += int(trecho.PrecoCentavos)
+		precoTotal += trecho.PrecoCentavos
 	}
-	return int64(precoTotal), nil
+	return precoTotal, nil
 }

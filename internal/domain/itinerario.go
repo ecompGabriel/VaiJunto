@@ -7,7 +7,7 @@ type Itinerario struct {
 	PrecoTotalCentavos int64
 }
 
-func (i Itinerario) calcularPrecoTotal() int64 {
+func (i Itinerario) CalcularPrecoTotal() int64 {
 	var precoTotal int64
 
 	for _, trecho := range i.Trechos {
@@ -16,7 +16,7 @@ func (i Itinerario) calcularPrecoTotal() int64 {
 	return precoTotal
 }
 
-func (i Itinerario) temVagas(quantidade int) bool {
+func (i Itinerario) TemVagas(quantidade int) bool {
 
 	for _, trecho := range i.Trechos {
 		if !trecho.TemVagas(quantidade) {
