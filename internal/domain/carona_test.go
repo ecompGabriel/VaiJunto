@@ -1,6 +1,9 @@
 package domain
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func caronaDeTeste() Carona {
 	return Carona{
@@ -104,5 +107,101 @@ func TestCaronaPrecosEntre(t *testing.T) {
 
 	if preco != 3500 {
 		t.Errorf("preço = %d centavos; esperava 3500", preco)
+	}
+}
+
+func TestNovaCaronaCriaTrechos(t *testing.T) {
+	horario := time.Date(2026, time.September, 17, 8, 0, 0, 0, time.UTC)
+
+	carona, err := NovaCarona(
+		"carona-1",
+		"motorista-1",
+		horario,
+		[]string{"Feira", "Alagoinhas", "Salvador"},
+		4,
+		[]int64{1500, 2000},
+	)
+	if err != nil {
+		t.Fatalf("não esperava erro ao criar carona: %v", err)
+	}
+
+	if carona == nil {
+		t.Fatal("esperava uma carona criada")
+	}
+
+	if len(carona.trechos) != 2 {
+		t.Fatalf("quantidade de trechos = %d; esperava 2", len(carona.trechos))
+	}
+
+	primeiroTrecho := carona.trechos[0]
+	if primeiroTrecho.Ordem != 0 || primeiroTrecho.Origem != "Feira" || primeiroTrecho.Destino != "Alagoinhas" {
+		t.Error("primeiro trecho foi criado com dados incorretos")
+	}
+
+	if primeiroTrecho.Capacidade != 4 || primeiroTrecho.AssentosDisponiveis != 4 || primeiroTrecho.PrecoCentavos != 1500 {
+		t.Error("capacidade, disponibilidade ou preço do primeiro trecho estão incorretos")
+	}
+
+	segundoTrecho := carona.trechos[1]
+	if segundoTrecho.Ordem != 1 || segundoTrecho.Origem != "Alagoinhas" || segundoTrecho.Destino != "Salvador" || segundoTrecho.PrecoCentavos != 2000 {
+		t.Error("segundo trecho foi criado com dados incorretos")
+	}
+}
+
+func TestNovaCaronaRejeitaRotaInvalida(t *testing.T) {
+	_, err := NovaCarona(
+		"carona-1",
+		"motorista-1",
+		time.Now(),
+		[]string{"Feira"},
+		4,
+		[]int64{},
+	)
+
+	if err == nil {
+		t.Error("esperava erro para rota com menos de duas cidades")
+	}
+}
+
+func TestNovaCaronaRejeitaCapacidadeInvalida(t *testing.T) {
+	_, err := NovaCarona(
+		"carona-1",
+		"motorista-1",
+		time.Now(),
+		[]string{"Feira", "Salvador"},
+		0,
+		[]int64{2000},
+	)
+
+	if err == nil {
+		t.Error("esperava erro para capacidade igual a zero")
+	}
+}
+
+func TestNovaCaronaRejeitaPrecosInvalidos(t *testing.T) {
+	_, err := NovaCarona(
+		"carona-1",
+		"motorista-1",
+		time.Now(),
+		[]string{"Feira", "Alagoinhas", "Salvador"},
+		4,
+		[]int64{1500},
+	)
+
+	if err == nil {
+		t.Error("esperava erro para quantidade de preços diferente da quantidade de trechos")
+	}
+
+	_, err = NovaCarona(
+		"carona-1",
+		"motorista-1",
+		time.Now(),
+		[]string{"Feira", "Salvador"},
+		4,
+		[]int64{-1},
+	)
+
+	if err == nil {
+		t.Error("esperava erro para preço negativo")
 	}
 }

@@ -60,3 +60,43 @@ func (carona Carona) PrecosEntre(origem string, destino string) (int64, error) {
 	}
 	return precoTotal, nil
 }
+
+func NovaCarona(id string, motoristaID string, horarioSaida time.Time, rota []string, capacidade int, precosCentavos []int64) (*Carona, error) {
+	if len(rota) < 2 {
+		return nil, errors.New("a rota precisa ter ao menos duas cidades")
+	}
+
+	if capacidade <= 0 {
+		return nil, errors.New("a capacidade precisa ser maior que zero")
+	}
+
+	quantidadeTrechos := len(rota) - 1
+	if len(precosCentavos) != quantidadeTrechos {
+		return nil, errors.New("a quantidade de preços deve ser igual à quantidade de trechos")
+	}
+
+	trechos := make([]Trecho, 0, quantidadeTrechos)
+	for i := 0; i < quantidadeTrechos; i++ {
+		if precosCentavos[i] < 0 {
+			return nil, errors.New("o preço de um trecho não pode ser negativo")
+		}
+
+		trechos = append(trechos, Trecho{
+			CaronaID:            id,
+			Ordem:               i,
+			Origem:              rota[i],
+			Destino:             rota[i+1],
+			Capacidade:          capacidade,
+			AssentosDisponiveis: capacidade,
+			PrecoCentavos:       precosCentavos[i],
+		})
+	}
+
+	return &Carona{
+		ID:           id,
+		motoristaID:  motoristaID,
+		horarioSaida: horarioSaida,
+		rota:         append([]string(nil), rota...),
+		trechos:      trechos,
+	}, nil
+}
