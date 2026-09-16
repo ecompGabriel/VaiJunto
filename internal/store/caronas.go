@@ -24,6 +24,8 @@ type SituacaoCarona struct {
 }
 
 type CatalogoCaronas struct {
+	// Um único mutex protege caronas e reservas. A escolha simplifica a
+	// confirmação atômica: nenhuma outra goroutine altera assentos durante ela.
 	mu       sync.Mutex
 	caronas  map[string]*domain.Carona
 	reservas map[string]*domain.Reserva
@@ -106,6 +108,8 @@ func (catalogo *CatalogoCaronas) ConfirmarReserva(
 
 	trechosReserva := reserva.Trechos()
 
+	// Primeiro valida todos os trechos ainda dentro da região protegida. Assim,
+	// uma busca anterior nunca é tomada como garantia de vaga na confirmação.
 	for _, referencia := range trechosReserva {
 		carona, encontrada := catalogo.caronas[referencia.CaronaID]
 		if !encontrada {
@@ -119,6 +123,8 @@ func (catalogo *CatalogoCaronas) ConfirmarReserva(
 
 	referenciasReservadas := make([]domain.ReferenciaTrecho, 0, len(trechosReserva))
 
+	// Só depois da validação conjunta os assentos são alterados. O rollback é
+	// defensivo: se uma alteração inesperadamente falhar, desfaz as anteriores.
 	for _, referencia := range trechosReserva {
 		carona := catalogo.caronas[referencia.CaronaID]
 
@@ -245,6 +251,8 @@ func (catalogo *CatalogoCaronas) CancelarReserva(idReserva string, passageiroID 
 		return errors.New("a reserva não está confirmada")
 	}
 
+	// A reserva só muda de status após todos os assentos serem devolvidos. Isso
+	// preserva a consistência mesmo se a devolução de algum trecho falhar.
 	referenciasCanceladas := make([]domain.ReferenciaTrecho, 0, len(reserva.Trechos()))
 
 	for _, referencia := range reserva.Trechos() {
@@ -276,6 +284,8 @@ func (catalogo *CatalogoCaronas) desfazerCancelamento(
 	referencias []domain.ReferenciaTrecho,
 	quantidadeAssentos int,
 ) {
+	// Reconstitui os assentos já devolvidos quando o cancelamento não consegue
+	// ser concluído para todos os trechos da reserva.
 	for _, referencia := range referencias {
 		carona := catalogo.caronas[referencia.CaronaID]
 		carona.ReservarNoTrecho(referencia.Ordem, quantidadeAssentos)

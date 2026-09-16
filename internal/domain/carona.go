@@ -6,6 +6,8 @@ import (
 )
 
 type Carona struct {
+	// Rota e trechos ficam privados para que somente métodos do domínio alterem
+	// a disponibilidade de assentos de cada segmento.
 	ID           string
 	motoristaID  string
 	horarioSaida time.Time
@@ -14,6 +16,7 @@ type Carona struct {
 }
 
 func (carona Carona) Trechos() []Trecho {
+	// Retorna uma cópia para o chamador não alterar os trechos internos.
 	return append([]Trecho(nil), carona.trechos...)
 }
 
@@ -122,6 +125,8 @@ func NovaCarona(id string, motoristaID string, horarioSaida time.Time, rota []st
 	}
 
 	trechos := make([]Trecho, 0, quantidadeTrechos)
+	// Cidades adjacentes da rota geram trechos independentes: A→B e B→C têm
+	// disponibilidade própria, mesmo pertencendo à mesma carona.
 	for i := 0; i < quantidadeTrechos; i++ {
 		if precosCentavos[i] < 0 {
 			return nil, errors.New("o preço de um trecho não pode ser negativo")
@@ -142,7 +147,8 @@ func NovaCarona(id string, motoristaID string, horarioSaida time.Time, rota []st
 		ID:           id,
 		motoristaID:  motoristaID,
 		horarioSaida: horarioSaida,
-		rota:         append([]string(nil), rota...),
-		trechos:      trechos,
+		// Copia a rota recebida para manter o encapsulamento do domínio.
+		rota:    append([]string(nil), rota...),
+		trechos: trechos,
 	}, nil
 }

@@ -16,6 +16,7 @@ import (
 )
 
 func main() {
+	// O menu do passageiro reutiliza a conexão TCP aberta durante a sessão.
 	leitor := bufio.NewReader(os.Stdin)
 
 	cliente, err := clienttcp.Conectar()
@@ -53,6 +54,7 @@ func main() {
 }
 
 func autenticar(leitor *bufio.Reader, cliente *clienttcp.Cliente, perfil string) bool {
+	// Permite nova tentativa após credenciais inválidas sem encerrar o cliente.
 	for {
 		fmt.Println("\nAutenticação")
 		fmt.Println("1 - Entrar")
@@ -100,6 +102,7 @@ func autenticar(leitor *bufio.Reader, cliente *clienttcp.Cliente, perfil string)
 }
 
 func buscarEReservar(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
+	// A busca mostra possibilidades, mas a vaga só é garantida na confirmação.
 	origem := lerTexto(leitor, "Cidade de origem: ")
 	destino := lerTexto(leitor, "Cidade de destino: ")
 	quantidadeAssentos := lerInteiroPositivo(leitor, "Quantidade de assentos: ")
@@ -142,6 +145,8 @@ func buscarEReservar(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 		}
 
 		itinerario := itinerarios[escolha-1]
+		// A reserva envia a identidade de cada trecho escolhido, não apenas o
+		// itinerário exibido; assim o servidor consegue revalidar as vagas.
 		referencias := make([]protocol.ReferenciaTrecho, 0, len(itinerario.Trechos))
 		for _, trecho := range itinerario.Trechos {
 			referencias = append(referencias, protocol.ReferenciaTrecho{
@@ -150,6 +155,8 @@ func buscarEReservar(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 			})
 		}
 
+		// O ID técnico é criado automaticamente para evitar colisões entre
+		// reservas simultâneas. O passageiro o consulta antes de cancelar.
 		confirmar := protocol.ConfirmarReserva{
 			IDReserva:          novoIDReserva(),
 			QuantidadeAssentos: quantidadeAssentos,
@@ -173,6 +180,7 @@ func buscarEReservar(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 }
 
 func consultarReservas(cliente *clienttcp.Cliente) {
+	// A consulta é filtrada no servidor pelo usuário da sessão atual.
 	var reservas []protocol.Reserva
 	resposta, err := cliente.Enviar("consultar_reservas", struct{}{}, &reservas)
 	if err != nil {
@@ -203,6 +211,7 @@ func consultarReservas(cliente *clienttcp.Cliente) {
 }
 
 func cancelarReserva(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
+	// O servidor também confere a propriedade da reserva antes de cancelá-la.
 	idReserva := lerTexto(leitor, "ID da reserva a cancelar: ")
 	dados := protocol.CancelarReserva{IDReserva: idReserva}
 
@@ -216,6 +225,7 @@ func cancelarReserva(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 }
 
 func mostrarItinerarios(itinerarios []protocol.ItinerarioEncontrado) {
+	// Converte os valores internos em centavos para uma apresentação em reais.
 	for indice, itinerario := range itinerarios {
 		fmt.Printf("\nOpção %d - %s até %s\n", indice+1, itinerario.Origem, itinerario.Destino)
 		fmt.Printf(
@@ -238,6 +248,7 @@ func mostrarItinerarios(itinerarios []protocol.ItinerarioEncontrado) {
 }
 
 func novoIDReserva() string {
+	// O gerador criptograficamente aleatório torna colisões extremamente improváveis.
 	bytesAleatorios := make([]byte, 8)
 	_, err := rand.Read(bytesAleatorios)
 	if err == nil {
@@ -248,6 +259,7 @@ func novoIDReserva() string {
 }
 
 func lerInteiroPositivo(leitor *bufio.Reader, pergunta string) int {
+	// Reutiliza a leitura não negativa e restringe os campos que não aceitam zero.
 	for {
 		valor := lerInteiroNaoNegativo(leitor, pergunta)
 		if valor > 0 {
@@ -272,6 +284,7 @@ func lerInteiroNaoNegativo(leitor *bufio.Reader, pergunta string) int {
 }
 
 func lerTexto(leitor *bufio.Reader, pergunta string) string {
+	// Repetir a pergunta dá ao terminal uma validação simples de campos vazios.
 	for {
 		fmt.Print(pergunta)
 

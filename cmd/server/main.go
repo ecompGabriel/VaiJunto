@@ -24,6 +24,7 @@ const (
 )
 
 type sessaoConexao struct {
+	// A sessão pertence a uma conexão TCP; ela desaparece quando a conexão fecha.
 	UsuarioID string
 	Perfil    string
 }
@@ -51,6 +52,8 @@ func main() {
 			continue
 		}
 
+		// Cada cliente é atendido em sua própria goroutine. O catálogo sincroniza
+		// o estado compartilhado entre todas elas.
 		go tratarConexao(conexao, catalogo, usuarios)
 	}
 }
@@ -62,11 +65,14 @@ func tratarConexao(
 ) {
 	defer conexao.Close()
 
+	// O protocolo usa um JSON UTF-8 por linha. Scanner lida com leituras TCP
+	// parciais e com várias mensagens recebidas no mesmo fluxo de bytes.
 	leitor := bufio.NewScanner(conexao)
 	leitor.Buffer(make([]byte, 4096), tamanhoMaximoMensagem)
 	sessao := sessaoConexao{}
 
 	for {
+		// Um cliente ocioso não pode manter a goroutine presa indefinidamente.
 		err := conexao.SetReadDeadline(time.Now().Add(tempoMaximoSemAtividade))
 		if err != nil {
 			return
@@ -76,6 +82,8 @@ func tratarConexao(
 			break
 		}
 
+		// A decodificação estrita rejeita JSON malformado e campos desconhecidos
+		// sem derrubar o servidor nem afetar outras conexões.
 		var requisicao protocol.Requisicao
 		err = protocol.DecodificarEstrito(leitor.Bytes(), &requisicao)
 		if err != nil {
@@ -101,6 +109,8 @@ func tratarRequisicao(
 	catalogo *store.CatalogoCaronas,
 	usuarios *auth.GerenciadorUsuarios,
 ) protocol.Resposta {
+	// Versão e ID fazem parte de todas as operações para compatibilidade e para
+	// correlacionar uma resposta com a requisição que a originou.
 	if requisicao.Versao != protocol.VersaoAtual {
 		return respostaErro(requisicao.ID, "versao_incompativel", "versão de protocolo incompatível")
 	}
@@ -121,6 +131,7 @@ func tratarRequisicao(
 		return tratarIniciarSessao(requisicao, sessao, usuarios)
 	}
 
+	// Operações de negócio só são aceitas depois da autenticação nesta conexão.
 	if sessao.UsuarioID == "" {
 		return respostaErro(requisicao.ID, "sessao_obrigatoria", "inicie uma sessão antes desta operação")
 	}
@@ -469,6 +480,8 @@ func respostaErro(id string, codigo string, mensagem string) protocol.Resposta {
 }
 
 func enviarResposta(conexao net.Conn, resposta protocol.Resposta) bool {
+	// O limite de escrita impede que um cliente que parou de ler bloqueie o
+	// atendimento da sua própria conexão para sempre.
 	err := conexao.SetWriteDeadline(time.Now().Add(tempoMaximoEscrita))
 	if err != nil {
 		return false

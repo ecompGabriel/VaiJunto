@@ -14,6 +14,8 @@ import (
 )
 
 func main() {
+	// O cliente motorista mantém uma única conexão TCP e apresenta o menu após
+	// a autenticação bem-sucedida nessa conexão.
 	leitor := bufio.NewReader(os.Stdin)
 
 	cliente, err := clienttcp.Conectar()
@@ -48,6 +50,8 @@ func main() {
 }
 
 func autenticar(leitor *bufio.Reader, cliente *clienttcp.Cliente, perfil string) bool {
+	// Erros de cadastro e senha não encerram o programa: o usuário pode tentar
+	// novamente ou escolher sair no menu inicial.
 	for {
 		fmt.Println("\nAutenticação")
 		fmt.Println("1 - Entrar")
@@ -95,6 +99,7 @@ func autenticar(leitor *bufio.Reader, cliente *clienttcp.Cliente, perfil string)
 }
 
 func publicarCarona(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
+	// Coleta os dados amigáveis do terminal e monta o corpo da operação remota.
 	id := lerTexto(leitor, "ID da carona: ")
 	horarioSaida := lerHorarioSaida(leitor)
 	rota := lerRota(leitor)
@@ -119,6 +124,7 @@ func publicarCarona(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 }
 
 func consultarCaronas(cliente *clienttcp.Cliente) {
+	// O servidor devolve somente as caronas da sessão do motorista autenticado.
 	var caronas []protocol.CaronaDoMotorista
 	resposta, err := cliente.Enviar("listar_caronas_motorista", struct{}{}, &caronas)
 	if err != nil {
@@ -165,6 +171,7 @@ func consultarCaronas(cliente *clienttcp.Cliente) {
 }
 
 func lerTexto(leitor *bufio.Reader, pergunta string) string {
+	// Centraliza a leitura para impedir que campos obrigatórios sejam vazios.
 	for {
 		fmt.Print(pergunta)
 
@@ -184,6 +191,7 @@ func lerTexto(leitor *bufio.Reader, pergunta string) string {
 }
 
 func lerRota(leitor *bufio.Reader) []string {
+	// A rota é montada cidade a cidade e preserva a ordem informada pelo motorista.
 	origem := lerTexto(leitor, "Digite a cidade de origem da rota: ")
 	rota := []string{origem}
 
@@ -219,6 +227,7 @@ func lerCapacidade(leitor *bufio.Reader) int {
 }
 
 func lerHorarioSaida(leitor *bufio.Reader) string {
+	// A interface recebe data e hora separadamente; o protocolo envia RFC3339.
 	for {
 		data := lerTexto(leitor, "Data de saída (dd/mm/aaaa): ")
 		hora := lerTexto(leitor, "Horário de saída (hh:mm): ")
@@ -240,6 +249,7 @@ func lerHorarioSaida(leitor *bufio.Reader) string {
 }
 
 func converterDataHoraParaRFC3339(data string, hora string) (string, error) {
+	// O layout de Go usa uma data de referência. O fuso BRT equivale a UTC-3.
 	fusoBrasil := time.FixedZone("BRT", -3*60*60)
 	horarioSaida, err := time.ParseInLocation(
 		"02/01/2006 15:04",
@@ -267,6 +277,7 @@ func validarHorarioFuturo(horarioRFC3339 string, agora time.Time) error {
 }
 
 func lerPrecosCentavos(leitor *bufio.Reader, rota []string) []int64 {
+	// Há um preço para cada par de cidades consecutivas da rota.
 	precosCentavos := make([]int64, 0, len(rota)-1)
 
 	for i := 0; i < len(rota)-1; i++ {
@@ -293,6 +304,8 @@ func lerPrecosCentavos(leitor *bufio.Reader, rota []string) []int64 {
 }
 
 func converterReaisParaCentavos(textoPreco string) (int64, error) {
+	// Aceita vírgula ou ponto na entrada, mas armazena sempre um inteiro em
+	// centavos para que operações financeiras sejam exatas.
 	valor := strings.TrimSpace(textoPreco)
 	partes := strings.Split(strings.ReplaceAll(valor, ",", "."), ".")
 

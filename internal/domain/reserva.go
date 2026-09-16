@@ -13,6 +13,7 @@ const (
 )
 
 type ReferenciaTrecho struct {
+	// CaronaID + Ordem identifica unicamente um trecho dentro do catálogo.
 	CaronaID string
 	Ordem    int
 }
@@ -47,6 +48,7 @@ func NovaReserva(
 		return nil, errors.New("a reserva precisa ter ao menos um trecho")
 	}
 
+	// Impede reservar duas vezes o mesmo trecho dentro da mesma reserva.
 	referenciasVistas := make(map[ReferenciaTrecho]bool)
 
 	for _, trecho := range trechos {
@@ -75,6 +77,7 @@ func NovaReserva(
 }
 
 func (reserva Reserva) Trechos() []ReferenciaTrecho {
+	// A cópia impede que clientes do domínio modifiquem a reserva internamente.
 	return append([]ReferenciaTrecho(nil), reserva.trechos...)
 }
 

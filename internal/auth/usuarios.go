@@ -10,12 +10,15 @@ import (
 )
 
 type usuario struct {
+	// A senha pura não é armazenada: somente salt e hash permanecem na memória.
 	perfil    string
 	salt      []byte
 	senhaHash [sha256.Size]byte
 }
 
 type GerenciadorUsuarios struct {
+	// Usuários também são estado compartilhado: cadastro e autenticação não
+	// podem ler ou alterar o mapa simultaneamente sem sincronização.
 	mu       sync.Mutex
 	usuarios map[string]usuario
 }
@@ -43,6 +46,7 @@ func (gerenciador *GerenciadorUsuarios) Registrar(id string, senha string, perfi
 		return errors.New("já existe um usuário com esse ID")
 	}
 
+	// Um salt aleatório faz com que senhas iguais não tenham o mesmo hash.
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
@@ -70,6 +74,7 @@ func (gerenciador *GerenciadorUsuarios) Autenticar(id string, senha string) (str
 	}
 
 	hashInformado := calcularHash(usuarioEncontrado.salt, senha)
+	// A comparação em tempo constante reduz a exposição a ataques por tempo.
 	if subtle.ConstantTimeCompare(hashInformado[:], usuarioEncontrado.senhaHash[:]) != 1 {
 		return "", errors.New("usuário ou senha inválidos")
 	}
@@ -78,6 +83,7 @@ func (gerenciador *GerenciadorUsuarios) Autenticar(id string, senha string) (str
 }
 
 func calcularHash(salt []byte, senha string) [sha256.Size]byte {
+	// Função centralizada para garantir o mesmo cálculo no cadastro e no login.
 	dados := make([]byte, 0, len(salt)+len(senha))
 	dados = append(dados, salt...)
 	dados = append(dados, []byte(senha)...)

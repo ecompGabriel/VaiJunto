@@ -22,6 +22,8 @@ type Cliente struct {
 }
 
 func Conectar() (*Cliente, error) {
+	// A variável permite que o mesmo cliente aponte para outro computador sem
+	// alterar o código; sem ela, o teste continua local.
 	endereco := os.Getenv("VAIJUNTO_SERVER")
 	if endereco == "" {
 		endereco = enderecoPadrao
@@ -68,6 +70,8 @@ func (cliente *Cliente) Enviar(operacao string, dados any, destino any) (protoco
 		return protocol.Resposta{}, err
 	}
 
+	// O ID de correlação permite confirmar que a resposta recebida pertence a
+	// esta requisição. O contador atômico evita repetição em uso concorrente.
 	id := fmt.Sprintf("req-%d", atomic.AddUint64(&cliente.contador, 1))
 	requisicao := protocol.Requisicao{
 		Versao:   protocol.VersaoAtual,
@@ -76,6 +80,8 @@ func (cliente *Cliente) Enviar(operacao string, dados any, destino any) (protoco
 		Dados:    dadosJSON,
 	}
 
+	// Timeouts evitam que a interface fique bloqueada para sempre em uma falha
+	// de rede ou em um servidor que deixou de responder.
 	err = cliente.conexao.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	if err != nil {
 		return protocol.Resposta{}, err

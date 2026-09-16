@@ -7,6 +7,7 @@ import (
 	"io"
 )
 
+// VersaoAtual identifica o formato do protocolo aceito por cliente e servidor.
 const VersaoAtual = "1.0"
 
 const (
@@ -15,6 +16,9 @@ const (
 )
 
 type Requisicao struct {
+	// Cabeçalho comum de toda mensagem enviada ao servidor.
+	// Dados permanece em JSON bruto até o servidor identificar a operação e
+	// decodificá-lo na estrutura específica correspondente.
 	Versao   string          `json:"versao"`
 	ID       string          `json:"id"`
 	Operacao string          `json:"operacao"`
@@ -22,6 +26,7 @@ type Requisicao struct {
 }
 
 type Resposta struct {
+	// Cabeçalho comum de toda resposta enviada ao cliente.
 	Versao   string          `json:"versao"`
 	ID       string          `json:"id"`
 	Sucesso  bool            `json:"sucesso"`
@@ -47,6 +52,7 @@ type SessaoIniciada struct {
 }
 
 type CriarCarona struct {
+	// Corpo específico da operação criar_carona.
 	ID             string   `json:"id"`
 	HorarioSaida   string   `json:"horario_saida"`
 	Rota           []string `json:"rota"`
@@ -55,6 +61,7 @@ type CriarCarona struct {
 }
 
 type BuscarItinerarios struct {
+	// Corpo específico da operação buscar_itinerarios.
 	Origem             string `json:"origem"`
 	Destino            string `json:"destino"`
 	QuantidadeAssentos int    `json:"quantidade_assentos"`
@@ -82,6 +89,7 @@ type ReferenciaTrecho struct {
 }
 
 type ConfirmarReserva struct {
+	// Corpo específico da operação confirmar_reserva.
 	IDReserva          string             `json:"id_reserva"`
 	QuantidadeAssentos int                `json:"quantidade_assentos"`
 	Trechos            []ReferenciaTrecho `json:"trechos"`
@@ -119,6 +127,8 @@ type CaronaDoMotorista struct {
 }
 
 func DecodificarEstrito(dados []byte, destino any) error {
+	// Além de decodificar, rejeita campos não previstos e outro JSON após o
+	// primeiro valor. Isso evita aceitar mensagens ambíguas no protocolo.
 	decodificador := json.NewDecoder(bytes.NewReader(dados))
 	decodificador.DisallowUnknownFields()
 

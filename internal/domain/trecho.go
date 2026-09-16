@@ -3,6 +3,8 @@ package domain
 import "errors"
 
 type Trecho struct {
+	// Ordem diferencia os trechos da mesma carona: uma rota A-B-C possui os
+	// trechos 0 (A-B) e 1 (B-C), cada qual com vagas independentes.
 	CaronaID            string
 	Ordem               int
 	Origem              string
@@ -13,7 +15,8 @@ type Trecho struct {
 }
 
 func (t Trecho) TemVagas(quantidadeSolicitada int) bool {
-
+	// Consultar vagas não altera o estado; a confirmação real acontece depois,
+	// sob o mutex do catálogo compartilhado.
 	if quantidadeSolicitada <= 0 {
 		return false
 	}
@@ -22,6 +25,7 @@ func (t Trecho) TemVagas(quantidadeSolicitada int) bool {
 }
 
 func (t *Trecho) Reservar(quantidadeSolicitada int) error {
+	// A disponibilidade nunca pode ficar negativa após uma reserva válida.
 	if quantidadeSolicitada <= 0 {
 		return errors.New("Pedido inválido")
 	}
@@ -34,6 +38,7 @@ func (t *Trecho) Reservar(quantidadeSolicitada int) error {
 }
 
 func (t *Trecho) CancelarReserva(quantidadeCancelada int) error {
+	// Cancelar devolve assentos, mas nunca pode ultrapassar a capacidade inicial.
 	if quantidadeCancelada <= 0 {
 		return errors.New("Cancelamento inválido")
 	}
