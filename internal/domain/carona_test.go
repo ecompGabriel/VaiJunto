@@ -44,6 +44,20 @@ func TestCaronaTemCidade(t *testing.T) {
 	}
 }
 
+func TestCaronaTrechosDevolveCopia(t *testing.T) {
+	carona := caronaDeTeste()
+
+	trechos := carona.Trechos()
+	if len(trechos) != 2 {
+		t.Fatalf("quantidade de trechos = %d; esperava 2", len(trechos))
+	}
+
+	trechos[0].Origem = "Outra cidade"
+	if carona.trechos[0].Origem == "Outra cidade" {
+		t.Error("alterar a cópia dos trechos não deveria alterar a carona")
+	}
+}
+
 func TestCaronaPosicaoCidade(t *testing.T) {
 	carona := caronaDeTeste()
 

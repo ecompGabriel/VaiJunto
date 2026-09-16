@@ -13,6 +13,10 @@ type Carona struct {
 	trechos      []Trecho
 }
 
+func (carona Carona) Trechos() []Trecho {
+	return append([]Trecho(nil), carona.trechos...)
+}
+
 func (carona Carona) TemCidade(cidade string) bool {
 
 	for _, c := range carona.rota {

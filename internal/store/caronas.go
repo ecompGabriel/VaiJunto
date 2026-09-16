@@ -47,3 +47,16 @@ func (catalogo *CatalogoCaronas) BuscarPorID(id string) (*domain.Carona, bool) {
 	}
 	return carona, true
 }
+
+func (catalogo *CatalogoCaronas) ListarTrechos() []domain.Trecho {
+	catalogo.mu.Lock()
+	defer catalogo.mu.Unlock()
+
+	trechos := make([]domain.Trecho, 0)
+
+	for _, carona := range catalogo.caronas {
+		trechos = append(trechos, carona.Trechos()...)
+	}
+
+	return trechos
+}

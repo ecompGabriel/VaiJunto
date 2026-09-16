@@ -71,3 +71,35 @@ func TestCatalogoBuscaCaronaPorIDInexistente(t *testing.T) {
 		t.Error("esperava nil para uma carona inexistente")
 	}
 }
+
+func TestCatalogoListaTrechosDasCaronas(t *testing.T) {
+	catalogo := NovoCatalogoCaronas()
+
+	err := catalogo.Adicionar(novaCaronaDeTeste(t, "carona-1"))
+	if err != nil {
+		t.Fatalf("não esperava erro ao adicionar carona-1: %v", err)
+	}
+
+	err = catalogo.Adicionar(novaCaronaDeTeste(t, "carona-2"))
+	if err != nil {
+		t.Fatalf("não esperava erro ao adicionar carona-2: %v", err)
+	}
+
+	trechos := catalogo.ListarTrechos()
+	if len(trechos) != 2 {
+		t.Fatalf("quantidade de trechos = %d; esperava 2", len(trechos))
+	}
+
+	caronasEncontradas := make(map[string]bool)
+	for _, trecho := range trechos {
+		caronasEncontradas[trecho.CaronaID] = true
+	}
+
+	if !caronasEncontradas["carona-1"] {
+		t.Error("esperava um trecho da carona-1")
+	}
+
+	if !caronasEncontradas["carona-2"] {
+		t.Error("esperava um trecho da carona-2")
+	}
+}
