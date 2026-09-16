@@ -2,67 +2,166 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"vaijunto/internal/clienttcp"
 	"vaijunto/internal/protocol"
 )
 
 func main() {
 	leitor := bufio.NewReader(os.Stdin)
 
+	cliente, err := clienttcp.Conectar()
+	if err != nil {
+		log.Fatalf("não foi possível conectar ao servidor: %v", err)
+	}
+	defer cliente.Fechar()
+
+	if !autenticar(leitor, cliente, protocol.PerfilMotorista) {
+		return
+	}
+
+	for {
+		fmt.Println("\nVaiJunto - Motorista")
+		fmt.Println("1 - Publicar carona")
+		fmt.Println("2 - Consultar caronas e passageiros")
+		fmt.Println("0 - Sair")
+
+		opcao := lerTexto(leitor, "Escolha: ")
+		switch opcao {
+		case "1":
+			publicarCarona(leitor, cliente)
+		case "2":
+			consultarCaronas(cliente)
+		case "0":
+			fmt.Println("Até logo!")
+			return
+		default:
+			fmt.Println("Opção inválida.")
+		}
+	}
+}
+
+func autenticar(leitor *bufio.Reader, cliente *clienttcp.Cliente, perfil string) bool {
+	for {
+		fmt.Println("\nAutenticação")
+		fmt.Println("1 - Entrar")
+		fmt.Println("2 - Cadastrar e entrar")
+		fmt.Println("0 - Sair")
+
+		opcao := lerTexto(leitor, "Escolha: ")
+		if opcao == "0" {
+			fmt.Println("Até logo!")
+			return false
+		}
+		if opcao != "1" && opcao != "2" {
+			fmt.Println("Opção inválida.")
+			continue
+		}
+
+		usuarioID := lerTexto(leitor, "ID do usuário: ")
+		senha := lerTexto(leitor, "Senha (mínimo de 4 caracteres): ")
+
+		if opcao == "2" {
+			resposta, err := cliente.RegistrarUsuario(usuarioID, senha, perfil)
+			if err != nil {
+				fmt.Println("Erro de comunicação ao cadastrar:", err)
+				continue
+			}
+			if !resposta.Sucesso {
+				fmt.Println("Cadastro recusado:", resposta.Mensagem)
+				continue
+			}
+		}
+
+		resposta, err := cliente.IniciarSessao(usuarioID, senha)
+		if err != nil {
+			fmt.Println("Erro de comunicação ao entrar:", err)
+			continue
+		}
+		if !resposta.Sucesso {
+			fmt.Println("Autenticação recusada:", resposta.Mensagem)
+			continue
+		}
+
+		fmt.Println("Sessão iniciada com sucesso.")
+		return true
+	}
+}
+
+func publicarCarona(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 	id := lerTexto(leitor, "ID da carona: ")
-	motoristaID := lerTexto(leitor, "ID do motorista: ")
 	horarioSaida := lerHorarioSaida(leitor)
 	rota := lerRota(leitor)
 	capacidade := lerCapacidade(leitor)
 	precosCentavos := lerPrecosCentavos(leitor, rota)
 
-	conexao, err := net.Dial("tcp", "127.0.0.1:8080")
-	if err != nil {
-		log.Fatalf("nao foi possivel conectar ao servidor: %v", err)
-	}
-	defer conexao.Close()
-
 	dados := protocol.CriarCarona{
 		ID:             id,
-		MotoristaID:    motoristaID,
 		HorarioSaida:   horarioSaida,
 		Rota:           rota,
 		Capacidade:     capacidade,
 		PrecosCentavos: precosCentavos,
 	}
 
-	dadosJSON, err := json.Marshal(dados)
-
+	resposta, err := cliente.Enviar("criar_carona", dados, nil)
 	if err != nil {
-		log.Fatalf("não foi possível transformar os dados da carona em JSON: %v", err)
+		fmt.Println("Erro de comunicação:", err)
+		return
 	}
 
-	requisicao := protocol.Requisicao{
-		Operacao: "criar_carona",
-		Dados:    dadosJSON,
-	}
+	fmt.Println(resposta.Mensagem)
+}
 
-	err = json.NewEncoder(conexao).Encode(requisicao)
-
+func consultarCaronas(cliente *clienttcp.Cliente) {
+	var caronas []protocol.CaronaDoMotorista
+	resposta, err := cliente.Enviar("listar_caronas_motorista", struct{}{}, &caronas)
 	if err != nil {
-		log.Fatalf("nao foi possivel enviar requisicao: %v", err)
+		fmt.Println("Erro de comunicação:", err)
+		return
+	}
+	if !resposta.Sucesso {
+		fmt.Println("Consulta recusada:", resposta.Mensagem)
+		return
 	}
 
-	var resposta protocol.Resposta
-	err = json.NewDecoder(conexao).Decode(&resposta)
-	if err != nil {
-		log.Fatalf("nao foi possivel ler resposta: %v", err)
+	if len(caronas) == 0 {
+		fmt.Println("Você ainda não publicou caronas.")
+		return
 	}
 
-	fmt.Println("Resposta do servidor:", resposta.Mensagem)
+	for _, carona := range caronas {
+		fmt.Printf("\nCarona %s\n", carona.ID)
+		for _, trecho := range carona.Trechos {
+			fmt.Printf(
+				"- Trecho %d: %s → %s - %d/%d vaga(s) disponível(is)\n",
+				trecho.Ordem,
+				trecho.Origem,
+				trecho.Destino,
+				trecho.AssentosDisponiveis,
+				trecho.Capacidade,
+			)
+
+			if len(trecho.Passageiros) == 0 {
+				fmt.Println("  Nenhum passageiro confirmado.")
+				continue
+			}
+
+			for _, passageiro := range trecho.Passageiros {
+				fmt.Printf(
+					"  Passageiro %s: %d assento(s)\n",
+					passageiro.PassageiroID,
+					passageiro.QuantidadeAssentos,
+				)
+			}
+		}
+	}
+
 }
 
 func lerTexto(leitor *bufio.Reader, pergunta string) string {

@@ -8,7 +8,6 @@ import (
 func TestRequisicaoCarregaDadosDeCriarCarona(t *testing.T) {
 	dadosOriginais := CriarCarona{
 		ID:             "carona-1",
-		MotoristaID:    "motorista-1",
 		HorarioSaida:   "2026-09-17T08:00:00-03:00",
 		Rota:           []string{"Feira", "Alagoinhas", "Salvador"},
 		Capacidade:     4,
@@ -22,6 +21,8 @@ func TestRequisicaoCarregaDadosDeCriarCarona(t *testing.T) {
 	}
 
 	requisicaoOriginal := Requisicao{
+		Versao:   VersaoAtual,
+		ID:       "req-1",
 		Operacao: "criar_carona",
 		Dados:    dadosJSON,
 	}
@@ -60,14 +61,6 @@ func TestRequisicaoCarregaDadosDeCriarCarona(t *testing.T) {
 			"id = %s; esperava %s",
 			dadosRecebidos.ID,
 			dadosOriginais.ID,
-		)
-	}
-
-	if dadosRecebidos.MotoristaID != dadosOriginais.MotoristaID {
-		t.Errorf(
-			"motorista_id = %s; esperava %s",
-			dadosRecebidos.MotoristaID,
-			dadosOriginais.MotoristaID,
 		)
 	}
 
@@ -123,5 +116,15 @@ func TestRequisicaoCarregaDadosDeCriarCarona(t *testing.T) {
 				precoOriginal,
 			)
 		}
+	}
+}
+
+func TestDecodificarEstritoRejeitaCampoDesconhecido(t *testing.T) {
+	dados := []byte(`{"origem":"Feira","destino":"Salvador","quantidade_assentos":1,"campo_extra":true}`)
+
+	var busca BuscarItinerarios
+	err := DecodificarEstrito(dados, &busca)
+	if err == nil {
+		t.Error("esperava erro para campo desconhecido")
 	}
 }

@@ -95,7 +95,7 @@ func TestBuscarItinerariosIgnoraTrechoSemVagas(t *testing.T) {
 			Origem:              "Feira",
 			Destino:             "Salvador",
 			Capacidade:          2,
-			AssentosDisponiveis: 1,
+			AssentosDisponiveis: 0,
 			PrecoCentavos:       2000,
 		},
 	}
@@ -107,6 +107,36 @@ func TestBuscarItinerariosIgnoraTrechoSemVagas(t *testing.T) {
 
 	if len(itinerarios) != 0 {
 		t.Errorf("quantidade de itinerários = %d; esperava 0", len(itinerarios))
+	}
+}
+
+func TestBuscarItinerariosNaoDiferenciaMaiusculasEMinusculas(t *testing.T) {
+	trechos := []domain.Trecho{
+		{
+			CaronaID:            "carona-1",
+			Origem:              "Feira",
+			Destino:             "Salvador",
+			Capacidade:          3,
+			AssentosDisponiveis: 3,
+			PrecoCentavos:       2000,
+		},
+	}
+
+	itinerarios, err := BuscarItinerarios(trechos, "  FEIRA ", "sAlVaDoR", 1)
+	if err != nil {
+		t.Fatalf("não esperava erro na busca: %v", err)
+	}
+
+	if len(itinerarios) != 1 {
+		t.Fatalf("quantidade de itinerários = %d; esperava 1", len(itinerarios))
+	}
+
+	if itinerarios[0].Origem != "Feira" || itinerarios[0].Destino != "Salvador" {
+		t.Errorf(
+			"itinerário retornado = %s até %s; esperava Feira até Salvador",
+			itinerarios[0].Origem,
+			itinerarios[0].Destino,
+		)
 	}
 }
 

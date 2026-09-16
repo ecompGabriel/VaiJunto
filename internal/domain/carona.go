@@ -17,6 +17,48 @@ func (carona Carona) Trechos() []Trecho {
 	return append([]Trecho(nil), carona.trechos...)
 }
 
+func (carona Carona) MotoristaID() string {
+	return carona.motoristaID
+}
+
+func (carona Carona) TemVagasNoTrecho(ordem int, quantidade int) bool {
+	for _, trecho := range carona.trechos {
+		if trecho.Ordem == ordem {
+			return trecho.TemVagas(quantidade)
+		}
+	}
+
+	return false
+}
+
+func (carona *Carona) ReservarNoTrecho(ordem int, quantidade int) error {
+	trecho, err := carona.encontrarTrechoPorOrdem(ordem)
+	if err != nil {
+		return err
+	}
+
+	return trecho.Reservar(quantidade)
+}
+
+func (carona *Carona) CancelarNoTrecho(ordem int, quantidade int) error {
+	trecho, err := carona.encontrarTrechoPorOrdem(ordem)
+	if err != nil {
+		return err
+	}
+
+	return trecho.CancelarReserva(quantidade)
+}
+
+func (carona *Carona) encontrarTrechoPorOrdem(ordem int) (*Trecho, error) {
+	for indice := range carona.trechos {
+		if carona.trechos[indice].Ordem == ordem {
+			return &carona.trechos[indice], nil
+		}
+	}
+
+	return nil, errors.New("trecho não encontrado na carona")
+}
+
 func (carona Carona) TemCidade(cidade string) bool {
 
 	for _, c := range carona.rota {

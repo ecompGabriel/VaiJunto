@@ -1,0 +1,116 @@
+package clienttcp
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net"
+	"os"
+	"sync/atomic"
+	"time"
+
+	"vaijunto/internal/protocol"
+)
+
+const enderecoPadrao = "127.0.0.1:8080"
+
+type Cliente struct {
+	conexao  net.Conn
+	encoder  *json.Encoder
+	decoder  *json.Decoder
+	contador uint64
+}
+
+func Conectar() (*Cliente, error) {
+	endereco := os.Getenv("VAIJUNTO_SERVER")
+	if endereco == "" {
+		endereco = enderecoPadrao
+	}
+
+	conexao, err := net.DialTimeout("tcp", endereco, 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Cliente{
+		conexao: conexao,
+		encoder: json.NewEncoder(conexao),
+		decoder: json.NewDecoder(conexao),
+	}, nil
+}
+
+func (cliente *Cliente) Fechar() error {
+	return cliente.conexao.Close()
+}
+
+func (cliente *Cliente) RegistrarUsuario(usuarioID string, senha string, perfil string) (protocol.Resposta, error) {
+	dados := protocol.RegistrarUsuario{
+		UsuarioID: usuarioID,
+		Senha:     senha,
+		Perfil:    perfil,
+	}
+
+	return cliente.Enviar("registrar_usuario", dados, nil)
+}
+
+func (cliente *Cliente) IniciarSessao(usuarioID string, senha string) (protocol.Resposta, error) {
+	dados := protocol.IniciarSessao{
+		UsuarioID: usuarioID,
+		Senha:     senha,
+	}
+
+	return cliente.Enviar("iniciar_sessao", dados, nil)
+}
+
+func (cliente *Cliente) Enviar(operacao string, dados any, destino any) (protocol.Resposta, error) {
+	dadosJSON, err := json.Marshal(dados)
+	if err != nil {
+		return protocol.Resposta{}, err
+	}
+
+	id := fmt.Sprintf("req-%d", atomic.AddUint64(&cliente.contador, 1))
+	requisicao := protocol.Requisicao{
+		Versao:   protocol.VersaoAtual,
+		ID:       id,
+		Operacao: operacao,
+		Dados:    dadosJSON,
+	}
+
+	err = cliente.conexao.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	if err != nil {
+		return protocol.Resposta{}, err
+	}
+
+	err = cliente.encoder.Encode(requisicao)
+	if err != nil {
+		return protocol.Resposta{}, err
+	}
+
+	err = cliente.conexao.SetReadDeadline(time.Now().Add(30 * time.Second))
+	if err != nil {
+		return protocol.Resposta{}, err
+	}
+
+	var resposta protocol.Resposta
+	err = cliente.decoder.Decode(&resposta)
+	if err != nil {
+		return protocol.Resposta{}, err
+	}
+
+	if resposta.Versao != protocol.VersaoAtual {
+		return protocol.Resposta{}, errors.New("servidor respondeu com versão incompatível")
+	}
+
+	if resposta.ID != id {
+		return protocol.Resposta{}, errors.New("ID de correlação da resposta não corresponde à requisição")
+	}
+
+	if resposta.Sucesso && destino != nil && len(resposta.Dados) > 0 {
+		err = json.Unmarshal(resposta.Dados, destino)
+		if err != nil {
+			return protocol.Resposta{}, err
+		}
+	}
+
+	return resposta, nil
+}

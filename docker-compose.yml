@@ -1,0 +1,29 @@
+services:
+  server:
+    build: .
+    environment:
+      VAIJUNTO_LISTEN: ":8080"
+    ports:
+      - "8080:8080"
+
+  driver-client:
+    build: .
+    command: ["/app/driver-client"]
+    environment:
+      VAIJUNTO_SERVER: "server:8080"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - server
+    profiles: ["clients"]
+
+  passenger-client:
+    build: .
+    command: ["/app/passenger-client"]
+    environment:
+      VAIJUNTO_SERVER: "server:8080"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - server
+    profiles: ["clients"]

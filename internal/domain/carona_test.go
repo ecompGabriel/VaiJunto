@@ -58,6 +58,54 @@ func TestCaronaTrechosDevolveCopia(t *testing.T) {
 	}
 }
 
+func TestCaronaReservaEDevolveAssentosNoTrechoPorOrdem(t *testing.T) {
+	carona := caronaDeTeste()
+
+	err := carona.ReservarNoTrecho(1, 2)
+	if err != nil {
+		t.Fatalf("não esperava erro ao reservar: %v", err)
+	}
+
+	if carona.trechos[0].AssentosDisponiveis != 4 {
+		t.Errorf(
+			"assentos do trecho 0 = %d; esperava 4",
+			carona.trechos[0].AssentosDisponiveis,
+		)
+	}
+
+	if carona.trechos[1].AssentosDisponiveis != 2 {
+		t.Errorf(
+			"assentos do trecho 1 = %d; esperava 2",
+			carona.trechos[1].AssentosDisponiveis,
+		)
+	}
+
+	err = carona.CancelarNoTrecho(1, 2)
+	if err != nil {
+		t.Fatalf("não esperava erro ao cancelar: %v", err)
+	}
+
+	if carona.trechos[1].AssentosDisponiveis != 4 {
+		t.Errorf(
+			"assentos do trecho 1 = %d; esperava 4",
+			carona.trechos[1].AssentosDisponiveis,
+		)
+	}
+}
+
+func TestCaronaRejeitaOrdemDeTrechoInexistente(t *testing.T) {
+	carona := caronaDeTeste()
+
+	err := carona.ReservarNoTrecho(10, 1)
+	if err == nil {
+		t.Error("esperava erro para ordem de trecho inexistente")
+	}
+
+	if carona.TemVagasNoTrecho(10, 1) {
+		t.Error("não esperava vagas para trecho inexistente")
+	}
+}
+
 func TestCaronaPosicaoCidade(t *testing.T) {
 	carona := caronaDeTeste()
 
