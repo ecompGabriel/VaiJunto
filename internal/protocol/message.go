@@ -103,6 +103,10 @@ type CancelarReserva struct {
 	IDReserva string `json:"id_reserva"`
 }
 
+type CancelarCarona struct {
+	IDCarona string `json:"id_carona"`
+}
+
 type Reserva struct {
 	ID                 string             `json:"id"`
 	PassageiroID       string             `json:"passageiro_id"`
@@ -128,8 +132,9 @@ type TrechoDoMotorista struct {
 }
 
 type CaronaDoMotorista struct {
-	ID      string              `json:"id"`
-	Trechos []TrechoDoMotorista `json:"trechos"`
+	ID        string              `json:"id"`
+	Cancelada bool                `json:"cancelada"`
+	Trechos   []TrechoDoMotorista `json:"trechos"`
 }
 
 func DecodificarEstrito(dados []byte, destino any) error {

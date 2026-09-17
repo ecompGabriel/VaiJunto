@@ -149,6 +149,12 @@ func tratarRequisicao(
 		}
 		return tratarListarCaronasMotorista(requisicao, catalogo, sessao.UsuarioID)
 
+	case "cancelar_carona":
+		if sessao.Perfil != protocol.PerfilMotorista {
+			return respostaErro(requisicao.ID, "perfil_nao_autorizado", "operação exclusiva do motorista")
+		}
+		return tratarCancelarCarona(requisicao, catalogo, sessao.UsuarioID)
+
 	case "buscar_itinerarios":
 		if sessao.Perfil != protocol.PerfilPassageiro {
 			return respostaErro(requisicao.ID, "perfil_nao_autorizado", "operação exclusiva do passageiro")
@@ -390,6 +396,25 @@ func tratarCancelarReserva(
 	return respostaSucesso(requisicao.ID, "reserva cancelada com sucesso", nil)
 }
 
+func tratarCancelarCarona(
+	requisicao protocol.Requisicao,
+	catalogo *store.CatalogoCaronas,
+	motoristaID string,
+) protocol.Resposta {
+	var dados protocol.CancelarCarona
+	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
+	if err != nil {
+		return respostaErro(requisicao.ID, "dados_invalidos", "dados do cancelamento inválidos")
+	}
+
+	err = catalogo.CancelarCarona(dados.IDCarona, motoristaID)
+	if err != nil {
+		return respostaErro(requisicao.ID, "carona_nao_cancelada", err.Error())
+	}
+
+	return respostaSucesso(requisicao.ID, "carona cancelada com sucesso", nil)
+}
+
 func tratarListarCaronasMotorista(
 	requisicao protocol.Requisicao,
 	catalogo *store.CatalogoCaronas,
@@ -429,8 +454,9 @@ func tratarListarCaronasMotorista(
 		}
 
 		caronas = append(caronas, protocol.CaronaDoMotorista{
-			ID:      situacao.ID,
-			Trechos: trechos,
+			ID:        situacao.ID,
+			Cancelada: situacao.Cancelada,
+			Trechos:   trechos,
 		})
 	}
 

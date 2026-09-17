@@ -12,7 +12,7 @@ TCP/IP usando JSON.
 - comparação de cidades sem diferenciar maiúsculas e minúsculas;
 - confirmação atômica de todos os trechos de uma reserva;
 - consulta e cancelamento de reservas pelo passageiro;
-- consulta de passageiros confirmados por trecho pelo motorista;
+- consulta de passageiros confirmados por trecho e cancelamento de carona pelo motorista;
 - atendimento simultâneo por goroutine e proteção do estado com mutex;
 - testes de domínio, protocolo, falhas de socket, atomicidade e overbooking;
 - execução local ou em contêineres Docker.
@@ -127,6 +127,8 @@ deve permitir TCP nessa porta.
 - a confirmação revalida todos os trechos com o mutex travado;
 - todos os trechos são reservados ou nenhum é;
 - o cancelamento pertence ao passageiro que criou a reserva;
+- o motorista só cancela as próprias caronas; reservas que as usam são
+  canceladas por inteiro, devolvendo todos os seus trechos;
 - cancelar duas vezes não devolve assentos duas vezes;
 - a disponibilidade sempre permanece entre zero e a capacidade.
 

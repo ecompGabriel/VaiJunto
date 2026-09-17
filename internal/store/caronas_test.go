@@ -313,6 +313,76 @@ func TestCatalogoImpedeCancelarReservaDuasVezes(t *testing.T) {
 	}
 }
 
+func TestCatalogoCancelaCaronaECancelaReservasAfetadasPorInteiro(t *testing.T) {
+	catalogo := NovoCatalogoCaronas()
+	primeiraCarona := novaCaronaDeTeste(t, "carona-1")
+	segundaCarona := novaCaronaDeTeste(t, "carona-2")
+
+	err := catalogo.Adicionar(primeiraCarona)
+	if err != nil {
+		t.Fatalf("não esperava erro ao adicionar a primeira carona: %v", err)
+	}
+	err = catalogo.Adicionar(segundaCarona)
+	if err != nil {
+		t.Fatalf("não esperava erro ao adicionar a segunda carona: %v", err)
+	}
+
+	_, err = catalogo.ConfirmarReserva(
+		"reserva-1",
+		"passageiro-1",
+		2,
+		[]domain.ReferenciaTrecho{
+			{CaronaID: "carona-1", Ordem: 0},
+			{CaronaID: "carona-2", Ordem: 0},
+		},
+	)
+	if err != nil {
+		t.Fatalf("não esperava erro ao confirmar reserva: %v", err)
+	}
+
+	err = catalogo.CancelarCarona("carona-1", "motorista-1")
+	if err != nil {
+		t.Fatalf("não esperava erro ao cancelar a carona: %v", err)
+	}
+
+	if primeiraCarona.EstaAtiva() {
+		t.Error("esperava que a primeira carona estivesse cancelada")
+	}
+	if len(catalogo.ListarTrechos()) != 1 {
+		t.Error("a carona cancelada não deve mais aparecer para busca")
+	}
+
+	for _, carona := range []*domain.Carona{primeiraCarona, segundaCarona} {
+		trechos := carona.Trechos()
+		if trechos[0].AssentosDisponiveis != 4 {
+			t.Errorf("assentos da %s = %d; esperava 4", carona.ID, trechos[0].AssentosDisponiveis)
+		}
+	}
+
+	reserva, encontrada := catalogo.BuscarReservaPorID("reserva-1")
+	if !encontrada || reserva.EstaConfirmada() {
+		t.Error("a reserva afetada deveria estar cancelada por inteiro")
+	}
+}
+
+func TestCatalogoImpedeOutroMotoristaDeCancelarCarona(t *testing.T) {
+	catalogo := NovoCatalogoCaronas()
+	carona := novaCaronaDeTeste(t, "carona-1")
+
+	err := catalogo.Adicionar(carona)
+	if err != nil {
+		t.Fatalf("não esperava erro ao adicionar carona: %v", err)
+	}
+
+	err = catalogo.CancelarCarona("carona-1", "motorista-2")
+	if err == nil {
+		t.Fatal("esperava erro ao cancelar carona de outro motorista")
+	}
+	if !carona.EstaAtiva() {
+		t.Error("a carona deveria permanecer ativa")
+	}
+}
+
 func TestCatalogoImpedeOverbookingComPassageirosConcorrentes(t *testing.T) {
 	catalogo := NovoCatalogoCaronas()
 	carona := novaCaronaComRotaDeTeste(t, "carona-concorrente", 5)

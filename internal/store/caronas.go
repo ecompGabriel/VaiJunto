@@ -19,8 +19,9 @@ type SituacaoTrecho struct {
 }
 
 type SituacaoCarona struct {
-	ID      string
-	Trechos []SituacaoTrecho
+	ID        string
+	Cancelada bool
+	Trechos   []SituacaoTrecho
 }
 
 type CatalogoCaronas struct {
@@ -76,6 +77,9 @@ func (catalogo *CatalogoCaronas) ListarTrechos() []domain.Trecho {
 	trechos := make([]domain.Trecho, 0)
 
 	for _, carona := range catalogo.caronas {
+		if !carona.EstaAtiva() {
+			continue
+		}
 		trechos = append(trechos, carona.Trechos()...)
 	}
 
@@ -114,6 +118,9 @@ func (catalogo *CatalogoCaronas) ConfirmarReserva(
 		carona, encontrada := catalogo.caronas[referencia.CaronaID]
 		if !encontrada {
 			return nil, errors.New("carona da reserva não encontrada")
+		}
+		if !carona.EstaAtiva() {
+			return nil, errors.New("uma carona da reserva foi cancelada")
 		}
 
 		if !carona.TemVagasNoTrecho(referencia.Ordem, quantidadeAssentos) {
@@ -189,8 +196,9 @@ func (catalogo *CatalogoCaronas) ListarCaronasDoMotorista(motoristaID string) []
 		}
 
 		situacao := SituacaoCarona{
-			ID:      carona.ID,
-			Trechos: make([]SituacaoTrecho, 0),
+			ID:        carona.ID,
+			Cancelada: carona.EstaCancelada(),
+			Trechos:   make([]SituacaoTrecho, 0),
 		}
 
 		for _, trecho := range carona.Trechos() {
@@ -278,6 +286,86 @@ func (catalogo *CatalogoCaronas) CancelarReserva(idReserva string, passageiroID 
 	}
 
 	return nil
+}
+
+// CancelarCarona cancela a carona do próprio motorista. Se uma reserva
+// confirmada também usa outros trechos, ela inteira é cancelada para que o
+// passageiro nunca fique com apenas uma parte de seu itinerário confirmada.
+func (catalogo *CatalogoCaronas) CancelarCarona(idCarona string, motoristaID string) error {
+	catalogo.mu.Lock()
+	defer catalogo.mu.Unlock()
+
+	carona, existe := catalogo.caronas[idCarona]
+	if !existe {
+		return errors.New("carona não encontrada")
+	}
+	if carona.MotoristaID() != motoristaID {
+		return errors.New("a carona não pertence ao motorista informado")
+	}
+	if !carona.EstaAtiva() {
+		return errors.New("a carona já está cancelada")
+	}
+
+	reservasAfetadas := make([]*domain.Reserva, 0)
+	devolucoes := make(map[domain.ReferenciaTrecho]int)
+
+	for _, reserva := range catalogo.reservas {
+		if !reserva.EstaConfirmada() {
+			continue
+		}
+
+		afetada := false
+		for _, referencia := range reserva.Trechos() {
+			if referencia.CaronaID == idCarona {
+				afetada = true
+				break
+			}
+		}
+		if !afetada {
+			continue
+		}
+
+		reservasAfetadas = append(reservasAfetadas, reserva)
+		for _, referencia := range reserva.Trechos() {
+			devolucoes[referencia] += reserva.QuantidadeAssentos
+		}
+	}
+
+	// Valida todas as devoluções antes de alterar qualquer trecho. A checagem
+	// conjunta é a parte atômica do cancelamento da carona.
+	for referencia, quantidade := range devolucoes {
+		caronaDaReferencia, encontrada := catalogo.caronas[referencia.CaronaID]
+		if !encontrada || !caronaDaReferencia.PodeCancelarNoTrecho(referencia.Ordem, quantidade) {
+			return errors.New("não foi possível devolver os assentos das reservas afetadas")
+		}
+	}
+
+	type devolucaoRealizada struct {
+		referencia domain.ReferenciaTrecho
+		quantidade int
+	}
+	devolvidas := make([]devolucaoRealizada, 0, len(devolucoes))
+
+	for referencia, quantidade := range devolucoes {
+		caronaDaReferencia := catalogo.caronas[referencia.CaronaID]
+		err := caronaDaReferencia.CancelarNoTrecho(referencia.Ordem, quantidade)
+		if err != nil {
+			for _, devolvida := range devolvidas {
+				caronaDevolvida := catalogo.caronas[devolvida.referencia.CaronaID]
+				caronaDevolvida.ReservarNoTrecho(devolvida.referencia.Ordem, devolvida.quantidade)
+			}
+			return errors.New("não foi possível devolver os assentos das reservas afetadas")
+		}
+		devolvidas = append(devolvidas, devolucaoRealizada{referencia, quantidade})
+	}
+
+	for _, reserva := range reservasAfetadas {
+		// Todas foram verificadas como confirmadas enquanto o mutex estava preso.
+		// Logo, Cancelar não falha neste ponto.
+		reserva.Cancelar()
+	}
+
+	return carona.Cancelar()
 }
 
 func (catalogo *CatalogoCaronas) desfazerCancelamento(

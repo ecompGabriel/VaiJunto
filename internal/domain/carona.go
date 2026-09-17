@@ -13,6 +13,7 @@ type Carona struct {
 	horarioSaida time.Time
 	rota         []string
 	trechos      []Trecho
+	cancelada    bool
 }
 
 func (carona Carona) Trechos() []Trecho {
@@ -24,10 +25,40 @@ func (carona Carona) MotoristaID() string {
 	return carona.motoristaID
 }
 
+// EstaAtiva informa se a carona ainda pode aparecer em buscas e receber reservas.
+func (carona Carona) EstaAtiva() bool {
+	return !carona.cancelada
+}
+
+func (carona Carona) EstaCancelada() bool {
+	return carona.cancelada
+}
+
+func (carona *Carona) Cancelar() error {
+	if carona.cancelada {
+		return errors.New("a carona já está cancelada")
+	}
+
+	carona.cancelada = true
+	return nil
+}
+
 func (carona Carona) TemVagasNoTrecho(ordem int, quantidade int) bool {
 	for _, trecho := range carona.trechos {
 		if trecho.Ordem == ordem {
 			return trecho.TemVagas(quantidade)
+		}
+	}
+
+	return false
+}
+
+// PodeCancelarNoTrecho é usado pelo catálogo antes de devolver vários assentos
+// de uma vez, mantendo a disponibilidade dentro da capacidade do trecho.
+func (carona Carona) PodeCancelarNoTrecho(ordem int, quantidade int) bool {
+	for _, trecho := range carona.trechos {
+		if trecho.Ordem == ordem {
+			return quantidade > 0 && trecho.AssentosDisponiveis+quantidade <= trecho.Capacidade
 		}
 	}
 

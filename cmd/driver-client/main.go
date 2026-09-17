@@ -32,6 +32,7 @@ func main() {
 		fmt.Println("\nVaiJunto - Motorista")
 		fmt.Println("1 - Publicar carona")
 		fmt.Println("2 - Consultar caronas e passageiros")
+		fmt.Println("3 - Cancelar carona")
 		fmt.Println("0 - Sair")
 
 		opcao := lerTexto(leitor, "Escolha: ")
@@ -40,6 +41,8 @@ func main() {
 			publicarCarona(leitor, cliente)
 		case "2":
 			consultarCaronas(cliente)
+		case "3":
+			cancelarCarona(leitor, cliente)
 		case "0":
 			fmt.Println("Até logo!")
 			return
@@ -145,6 +148,11 @@ func consultarCaronas(cliente *clienttcp.Cliente) {
 
 	for _, carona := range caronas {
 		fmt.Printf("\nCarona %s\n", carona.ID)
+		if carona.Cancelada {
+			fmt.Println("Status: cancelada")
+		} else {
+			fmt.Println("Status: ativa")
+		}
 		for _, trecho := range carona.Trechos {
 			fmt.Printf(
 				"- Trecho %d: %s → %s - %d/%d vaga(s) - %s até %s\n",
@@ -172,6 +180,24 @@ func consultarCaronas(cliente *clienttcp.Cliente) {
 		}
 	}
 
+}
+
+func cancelarCarona(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
+	idCarona := lerTexto(leitor, "ID da carona a cancelar: ")
+
+	resposta, err := cliente.Enviar("cancelar_carona", protocol.CancelarCarona{
+		IDCarona: idCarona,
+	}, nil)
+	if err != nil {
+		fmt.Println("Erro de comunicação:", err)
+		return
+	}
+	if !resposta.Sucesso {
+		fmt.Println("Cancelamento recusado:", resposta.Mensagem)
+		return
+	}
+
+	fmt.Println(resposta.Mensagem)
 }
 
 func lerTexto(leitor *bufio.Reader, pergunta string) string {

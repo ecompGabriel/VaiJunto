@@ -102,6 +102,18 @@ do JSON enviado pelo cliente.
 Dados da requisição: `{}`. A resposta informa cada trecho, capacidade,
 disponibilidade e passageiros confirmados com sua quantidade de assentos.
 
+### `cancelar_carona`
+
+```json
+{"id_carona": "carona-1"}
+```
+
+Somente o motorista que publicou a carona pode cancelá-la. A carona deixa de
+aparecer nas buscas. Se houver reservas confirmadas que a utilizem, cada uma é
+cancelada por inteiro e todos os seus trechos — inclusive trechos de outras
+caronas no mesmo itinerário — recebem os assentos de volta. Isso impede uma
+reserva parcialmente confirmada.
+
 ## Operações do passageiro
 
 ### `buscar_itinerarios`
@@ -165,8 +177,8 @@ status muda para `cancelada`. Uma segunda tentativa é rejeitada.
 - `autenticacao_falhou`: usuário ou senha inválidos;
 - `sessao_obrigatoria`: operação antes do login;
 - `perfil_nao_autorizado`: perfil errado para a operação;
-- `carona_nao_criada`, `busca_invalida`, `reserva_nao_confirmada` e
-  `reserva_nao_cancelada`: falhas das regras de negócio;
+- `carona_nao_criada`, `carona_nao_cancelada`, `busca_invalida`,
+  `reserva_nao_confirmada` e `reserva_nao_cancelada`: falhas das regras de negócio;
 - `operacao_desconhecida`: operação não implementada.
 
 ## Desconexões e falhas
