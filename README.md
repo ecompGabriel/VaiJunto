@@ -111,6 +111,13 @@ computador servidor e informe o IP dele:
 docker build -t vaijunto .
 docker run --rm -it \
   -e VAIJUNTO_SERVER=IP_DO_SERVIDOR:8080 \
+  vaijunto /app/driver-client
+```
+
+```bash
+docker build -t vaijunto .
+docker run --rm -it \
+  -e VAIJUNTO_SERVER=IP_DO_SERVIDOR:8080 \
   vaijunto /app/passenger-client
 ```
 
