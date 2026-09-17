@@ -9,16 +9,20 @@ import (
 )
 
 type PassageiroNoTrecho struct {
+	// É uma visão para consulta do motorista; não é a reserva completa.
 	PassageiroID       string
 	QuantidadeAssentos int
 }
 
 type SituacaoTrecho struct {
+	// Junta dados do trecho e seus passageiros para a resposta de consulta.
 	Trecho      domain.Trecho
 	Passageiros []PassageiroNoTrecho
 }
 
 type SituacaoCarona struct {
+	// A carona é mantida na consulta mesmo cancelada, para seu dono acompanhar o
+	// histórico e reconhecer por que não aparece mais em buscas.
 	ID        string
 	Cancelada bool
 	Trechos   []SituacaoTrecho
@@ -33,6 +37,8 @@ type CatalogoCaronas struct {
 }
 
 func NovoCatalogoCaronas() *CatalogoCaronas {
+	// O servidor cria um catálogo central por execução; não há persistência em
+	// arquivo ou banco neste protótipo.
 	return &CatalogoCaronas{
 		caronas:  make(map[string]*domain.Carona),
 		reservas: make(map[string]*domain.Reserva),
@@ -40,6 +46,8 @@ func NovoCatalogoCaronas() *CatalogoCaronas {
 }
 
 func (catalogo *CatalogoCaronas) Adicionar(carona *domain.Carona) error {
+	// A mesma região protegida guarda a carona e verifica ID duplicado, evitando
+	// que duas publicações concorrentes usem a mesma chave.
 	if carona == nil {
 		return errors.New("a carona nao pode ser nula")
 	}
@@ -59,6 +67,8 @@ func (catalogo *CatalogoCaronas) Adicionar(carona *domain.Carona) error {
 }
 
 func (catalogo *CatalogoCaronas) BuscarPorID(id string) (*domain.Carona, bool) {
+	// A consulta também trava o catálogo porque os maps não são seguros para
+	// leitura enquanto outra goroutine pode escrever neles.
 	catalogo.mu.Lock()
 	defer catalogo.mu.Unlock()
 
@@ -71,6 +81,8 @@ func (catalogo *CatalogoCaronas) BuscarPorID(id string) (*domain.Carona, bool) {
 }
 
 func (catalogo *CatalogoCaronas) ListarTrechos() []domain.Trecho {
+	// A busca recebe uma fotografia dos trechos ativos. Ela não bloqueia vagas e
+	// não retorna caronas canceladas; a confirmação revalida tudo depois.
 	catalogo.mu.Lock()
 	defer catalogo.mu.Unlock()
 
@@ -92,6 +104,8 @@ func (catalogo *CatalogoCaronas) ConfirmarReserva(
 	quantidadeAssentos int,
 	referencias []domain.ReferenciaTrecho,
 ) (*domain.Reserva, error) {
+	// Esta é a transação central do projeto: validar todas as referências e só
+	// então ocupar todos os trechos, sem permitir estado parcialmente reservado.
 	reserva, err := domain.NovaReserva(
 		idReserva,
 		passageiroID,
@@ -154,6 +168,7 @@ func (catalogo *CatalogoCaronas) ConfirmarReserva(
 }
 
 func (catalogo *CatalogoCaronas) BuscarReservaPorID(id string) (*domain.Reserva, bool) {
+	// Usada principalmente por testes e consultas internas do catálogo.
 	catalogo.mu.Lock()
 	defer catalogo.mu.Unlock()
 
@@ -166,6 +181,8 @@ func (catalogo *CatalogoCaronas) BuscarReservaPorID(id string) (*domain.Reserva,
 }
 
 func (catalogo *CatalogoCaronas) ListarReservasDoPassageiro(passageiroID string) []domain.Reserva {
+	// A cópia protege o ponteiro interno. A ordenação por ID deixa a saída estável
+	// porque a ordem de iteração de um map em Go é propositalmente indefinida.
 	catalogo.mu.Lock()
 	defer catalogo.mu.Unlock()
 
@@ -185,6 +202,8 @@ func (catalogo *CatalogoCaronas) ListarReservasDoPassageiro(passageiroID string)
 }
 
 func (catalogo *CatalogoCaronas) ListarCaronasDoMotorista(motoristaID string) []SituacaoCarona {
+	// Esta consulta monta uma visão específica do motorista: apenas suas caronas
+	// e os passageiros confirmados em cada trecho separado.
 	catalogo.mu.Lock()
 	defer catalogo.mu.Unlock()
 
@@ -243,6 +262,8 @@ func (catalogo *CatalogoCaronas) ListarCaronasDoMotorista(motoristaID string) []
 }
 
 func (catalogo *CatalogoCaronas) CancelarReserva(idReserva string, passageiroID string) error {
+	// A checagem de dono impede que um passageiro cancele a reserva de outro só
+	// conhecendo seu ID técnico.
 	catalogo.mu.Lock()
 	defer catalogo.mu.Unlock()
 
@@ -376,6 +397,8 @@ func (catalogo *CatalogoCaronas) desfazerCancelamento(
 	// ser concluído para todos os trechos da reserva.
 	for _, referencia := range referencias {
 		carona := catalogo.caronas[referencia.CaronaID]
+		// Este rollback só ocorre dentro do mutex, logo ninguém observa vagas
+		// temporariamente devolvidas em uma reserva que acabará não cancelada.
 		carona.ReservarNoTrecho(referencia.Ordem, quantidadeAssentos)
 	}
 }

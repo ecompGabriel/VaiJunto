@@ -15,6 +15,8 @@ import (
 const enderecoPadrao = "127.0.0.1:8080"
 
 type Cliente struct {
+	// Cliente concentra a conexão e os codificadores compartilhados pelos dois
+	// programas de terminal. Cada instância representa uma sessão TCP.
 	conexao  net.Conn
 	encoder  *json.Encoder
 	decoder  *json.Decoder
@@ -29,6 +31,8 @@ func Conectar() (*Cliente, error) {
 		endereco = enderecoPadrao
 	}
 
+	// O timeout limita somente a tentativa inicial de conexão; não limita a
+	// duração total da sessão depois que ela for estabelecida.
 	conexao, err := net.DialTimeout("tcp", endereco, 10*time.Second)
 	if err != nil {
 		return nil, err
@@ -42,10 +46,12 @@ func Conectar() (*Cliente, error) {
 }
 
 func (cliente *Cliente) Fechar() error {
+	// O fechamento informa ao servidor que a sessão desta conexão terminou.
 	return cliente.conexao.Close()
 }
 
 func (cliente *Cliente) RegistrarUsuario(usuarioID string, senha string, perfil string) (protocol.Resposta, error) {
+	// Atalho para não repetir a montagem do corpo de cadastro nos dois clientes.
 	dados := protocol.RegistrarUsuario{
 		UsuarioID: usuarioID,
 		Senha:     senha,
@@ -56,6 +62,7 @@ func (cliente *Cliente) RegistrarUsuario(usuarioID string, senha string, perfil 
 }
 
 func (cliente *Cliente) IniciarSessao(usuarioID string, senha string) (protocol.Resposta, error) {
+	// A sessão será associada pelo servidor a esta conexão TCP específica.
 	dados := protocol.IniciarSessao{
 		UsuarioID: usuarioID,
 		Senha:     senha,
@@ -65,6 +72,8 @@ func (cliente *Cliente) IniciarSessao(usuarioID string, senha string) (protocol.
 }
 
 func (cliente *Cliente) Enviar(operacao string, dados any, destino any) (protocol.Resposta, error) {
+	// "dados" é o corpo específico da requisição; "destino", quando existe,
+	// recebe o corpo específico de uma resposta de sucesso.
 	dadosJSON, err := json.Marshal(dados)
 	if err != nil {
 		return protocol.Resposta{}, err

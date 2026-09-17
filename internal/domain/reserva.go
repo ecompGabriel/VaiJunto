@@ -19,10 +19,10 @@ type ReferenciaTrecho struct {
 }
 
 type Reserva struct {
-	ID                 string
-	PassageiroID       string
-	QuantidadeAssentos int
-	Status             StatusReserva
+	ID                 string        // Chave usada pelo passageiro para consultar/cancelar.
+	PassageiroID       string        // Dono, validado pela sessão no servidor.
+	QuantidadeAssentos int           // Mesma quantidade ocupada em todos os trechos.
+	Status             StatusReserva // Confirmada ocupa vagas; cancelada não ocupa.
 	trechos            []ReferenciaTrecho
 }
 
@@ -32,6 +32,8 @@ func NovaReserva(
 	quantidadeAssentos int,
 	trechos []ReferenciaTrecho,
 ) (*Reserva, error) {
+	// A reserva nasce confirmada apenas no domínio; o catálogo só a armazena
+	// depois de validar e alterar todos os trechos de forma atômica.
 	if strings.TrimSpace(id) == "" {
 		return nil, errors.New("o ID da reserva é obrigatório")
 	}
@@ -82,10 +84,12 @@ func (reserva Reserva) Trechos() []ReferenciaTrecho {
 }
 
 func (reserva Reserva) EstaConfirmada() bool {
+	// Centraliza a comparação de status para evitar espalhar strings pelo código.
 	return reserva.Status == StatusReservaConfirmada
 }
 
 func (reserva *Reserva) Cancelar() error {
+	// Impede que o mesmo ID devolva assentos duas vezes em cancelamentos repetidos.
 	if !reserva.EstaConfirmada() {
 		return errors.New("a reserva não está confirmada")
 	}

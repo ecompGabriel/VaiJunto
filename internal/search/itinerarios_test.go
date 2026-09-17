@@ -8,6 +8,8 @@ import (
 )
 
 func TestBuscarItinerariosEncontraCaminhoComDoisTrechos(t *testing.T) {
+	// Verifica a capacidade central do grafo: combinar trechos de caronas
+	// diferentes em uma única opção de viagem para o passageiro.
 	trechos := []domain.Trecho{
 		{
 			CaronaID:            "carona-1",
@@ -154,6 +156,8 @@ func TestBuscarItinerariosRejeitaQuantidadeInvalida(t *testing.T) {
 }
 
 func TestBuscarItinerariosAceitaConexaoComEsperaDeTrintaMinutos(t *testing.T) {
+	// Uma troca de carona precisa respeitar exatamente a conexão mínima definida
+	// pela aplicação, evitando itinerários que já teriam partido.
 	data := dataDeTeste()
 	trechos := []domain.Trecho{
 		{CaronaID: "feira-alagoinhas", Origem: "Feira", Destino: "Alagoinhas", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 1000, HorarioSaida: data.Add(8 * time.Hour), HorarioChegada: data.Add(10 * time.Hour)},
@@ -170,6 +174,8 @@ func TestBuscarItinerariosAceitaConexaoComEsperaDeTrintaMinutos(t *testing.T) {
 }
 
 func TestBuscarItinerariosRejeitaConexaoQueJaPartiu(t *testing.T) {
+	// O segundo trecho sai antes da chegada/conexão necessária e, portanto, não
+	// pode aparecer como uma continuação possível do primeiro.
 	data := dataDeTeste()
 	trechos := []domain.Trecho{
 		{CaronaID: "feira-alagoinhas", Origem: "Feira", Destino: "Alagoinhas", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 1000, HorarioSaida: data.Add(8 * time.Hour), HorarioChegada: data.Add(10 * time.Hour)},

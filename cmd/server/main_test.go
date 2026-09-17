@@ -15,6 +15,8 @@ import (
 )
 
 func TestTratarConexaoRejeitaJSONInvalidoSemCair(t *testing.T) {
+	// net.Pipe cria duas pontas de net.Conn em memória. Ele permite testar o
+	// protocolo sem abrir uma porta TCP real durante a suíte automatizada.
 	servidor, cliente := net.Pipe()
 	finalizou := make(chan struct{})
 
@@ -51,6 +53,8 @@ func TestTratarConexaoRejeitaJSONInvalidoSemCair(t *testing.T) {
 }
 
 func TestTratarConexaoSuportaDesconexaoDuranteMensagem(t *testing.T) {
+	// Simula um cliente que cai no meio de um JSON. O servidor deve encerrar só
+	// esta goroutine, sem travar nem corromper seu estado compartilhado.
 	servidor, cliente := net.Pipe()
 	finalizou := make(chan struct{})
 
@@ -73,6 +77,8 @@ func TestTratarConexaoSuportaDesconexaoDuranteMensagem(t *testing.T) {
 }
 
 func TestVariosClientesTCPNaoCausamOverbooking(t *testing.T) {
+	// Cenário de carga: vinte passageiros disputarão, no mesmo instante, as
+	// cinco vagas de um único trecho já publicado no catálogo.
 	catalogo := store.NovoCatalogoCaronas()
 	usuarios := auth.NovoGerenciadorUsuarios()
 
@@ -111,6 +117,8 @@ func TestVariosClientesTCPNaoCausamOverbooking(t *testing.T) {
 		go executarClienteConcorrente(i, usuarioID, catalogo, usuarios, prontos, inicio, resultados, &grupo)
 	}
 
+	// Só libera a disputa depois que todos os clientes terminaram o login e
+	// sinalizaram que estão prontos. Isso torna a concorrência reproduzível.
 	for i := 0; i < quantidadeClientes; i++ {
 		<-prontos
 	}
@@ -132,6 +140,8 @@ func TestVariosClientesTCPNaoCausamOverbooking(t *testing.T) {
 		}
 	}
 
+	// A capacidade é cinco: mais sucessos indicariam overbooking; menos poderiam
+	// indicar perda indevida de vagas ou falha de sincronização.
 	if sucessos != 5 {
 		t.Errorf("reservas confirmadas = %d; esperava 5", sucessos)
 	}
@@ -167,6 +177,8 @@ func executarClienteConcorrente(
 ) {
 	defer grupo.Done()
 
+	// Cada cliente ganha uma conexão e uma sessão próprias, mas todos apontam
+	// para o mesmo catálogo, que é o estado concorrente sob teste.
 	servidor, cliente := net.Pipe()
 	finalizou := make(chan struct{})
 	go func() {

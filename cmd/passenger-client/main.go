@@ -146,6 +146,8 @@ func buscarEReservar(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 			continue
 		}
 
+		// A opção exibida começa em 1 para o usuário, enquanto slices de Go começam
+		// em zero; por isso escolha-1 seleciona a posição correta.
 		itinerario := itinerarios[escolha-1]
 		// A reserva envia a identidade de cada trecho escolhido, não apenas o
 		// itinerário exibido; assim o servidor consegue revalidar as vagas.
@@ -217,6 +219,7 @@ func cancelarReserva(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 	idReserva := lerTexto(leitor, "ID da reserva a cancelar: ")
 	dados := protocol.CancelarReserva{IDReserva: idReserva}
 
+	// Não há corpo específico na resposta de cancelamento, apenas sucesso/erro.
 	resposta, err := cliente.Enviar("cancelar_reserva", dados, nil)
 	if err != nil {
 		fmt.Println("Erro de comunicação:", err)
@@ -252,6 +255,7 @@ func mostrarItinerarios(itinerarios []protocol.ItinerarioEncontrado) {
 }
 
 func lerDataDesejada(leitor *bufio.Reader) string {
+	// O servidor recebe RFC3339, mas o terminal aceita um formato mais amigável.
 	for {
 		texto := lerTexto(leitor, "Data desejada para saída (dd/mm/aaaa): ")
 		fusoBrasil := time.FixedZone("BRT", -3*60*60)
@@ -265,6 +269,7 @@ func lerDataDesejada(leitor *bufio.Reader) string {
 }
 
 func formatarHorario(horarioRFC3339 string) string {
+	// Faz o caminho inverso para apresentar no terminal uma data curta e legível.
 	horario, err := time.Parse(time.RFC3339, horarioRFC3339)
 	if err != nil {
 		return horarioRFC3339

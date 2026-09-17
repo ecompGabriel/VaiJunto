@@ -127,6 +127,8 @@ func TestCatalogoListaTrechosDasCaronas(t *testing.T) {
 }
 
 func TestCatalogoConfirmaReservaEmTodosOsTrechos(t *testing.T) {
+	// Uma viagem que passa por três cidades precisa ocupar seus dois trechos,
+	// demonstrando que disponibilidade não é controlada pela carona inteira.
 	catalogo := NovoCatalogoCaronas()
 	carona := novaCaronaComRotaDeTeste(t, "carona-1", 4)
 
@@ -165,6 +167,8 @@ func TestCatalogoConfirmaReservaEmTodosOsTrechos(t *testing.T) {
 }
 
 func TestCatalogoNaoAlteraNenhumTrechoQuandoReservaFalha(t *testing.T) {
+	// Esta é a propriedade de atomicidade: se um dos trechos falhar, nenhum dos
+	// outros pode perder assentos por causa de uma reserva incompleta.
 	catalogo := NovoCatalogoCaronas()
 	primeiraCarona := novaCaronaComRotaDeTeste(t, "carona-1", 6)
 	segundaCarona := novaCaronaDeTeste(t, "carona-2")
@@ -208,6 +212,8 @@ func TestCatalogoNaoAlteraNenhumTrechoQuandoReservaFalha(t *testing.T) {
 }
 
 func TestCatalogoCancelaReservaEDevolveAssentos(t *testing.T) {
+	// O cancelamento deve devolver exatamente a quantidade ocupada em todos os
+	// trechos da reserva e trocar seu status para cancelada.
 	catalogo := NovoCatalogoCaronas()
 	carona := novaCaronaComRotaDeTeste(t, "carona-1", 4)
 
@@ -314,6 +320,8 @@ func TestCatalogoImpedeCancelarReservaDuasVezes(t *testing.T) {
 }
 
 func TestCatalogoCancelaCaronaECancelaReservasAfetadasPorInteiro(t *testing.T) {
+	// A reserva usa duas caronas. Cancelar a primeira deve cancelar a reserva
+	// inteira e devolver assentos também na segunda, evitando itinerário parcial.
 	catalogo := NovoCatalogoCaronas()
 	primeiraCarona := novaCaronaDeTeste(t, "carona-1")
 	segundaCarona := novaCaronaDeTeste(t, "carona-2")
@@ -384,6 +392,8 @@ func TestCatalogoImpedeOutroMotoristaDeCancelarCarona(t *testing.T) {
 }
 
 func TestCatalogoImpedeOverbookingComPassageirosConcorrentes(t *testing.T) {
+	// Vinte goroutines disputarão cinco vagas. O canal "inicio" funciona como
+	// barreira para que elas tentem reservar quase no mesmo instante.
 	catalogo := NovoCatalogoCaronas()
 	carona := novaCaronaComRotaDeTeste(t, "carona-concorrente", 5)
 
@@ -415,7 +425,7 @@ func TestCatalogoImpedeOverbookingComPassageirosConcorrentes(t *testing.T) {
 	}
 
 	inicioMedicao := time.Now()
-	close(inicio)
+	close(inicio) // Libera todas as goroutines que estavam em <-inicio.
 	grupo.Wait()
 	duracao := time.Since(inicioMedicao)
 	close(resultados)
@@ -439,6 +449,8 @@ func TestCatalogoImpedeOverbookingComPassageirosConcorrentes(t *testing.T) {
 		)
 	}
 
+	// Além da disponibilidade, conferir o map garante que só cinco reservas
+	// foram efetivamente registradas como confirmadas.
 	if len(catalogo.reservas) != 5 {
 		t.Errorf("reservas armazenadas = %d; esperava 5", len(catalogo.reservas))
 	}

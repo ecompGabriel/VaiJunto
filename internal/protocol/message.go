@@ -36,6 +36,8 @@ type Resposta struct {
 }
 
 type RegistrarUsuario struct {
+	// O perfil é validado no servidor; o cliente não pode se cadastrar com um
+	// valor arbitrário e ganhar permissões inexistentes.
 	UsuarioID string `json:"usuario_id"`
 	Senha     string `json:"senha"`
 	Perfil    string `json:"perfil"`
@@ -94,20 +96,25 @@ type ReferenciaTrecho struct {
 
 type ConfirmarReserva struct {
 	// Corpo específico da operação confirmar_reserva.
+	// Os trechos identificam a opção escolhida pelo passageiro na busca.
 	IDReserva          string             `json:"id_reserva"`
 	QuantidadeAssentos int                `json:"quantidade_assentos"`
 	Trechos            []ReferenciaTrecho `json:"trechos"`
 }
 
 type CancelarReserva struct {
+	// O passageiro é identificado pela sessão, portanto basta indicar a reserva.
 	IDReserva string `json:"id_reserva"`
 }
 
 type CancelarCarona struct {
+	// Também usa a identidade do motorista autenticado para verificar a posse.
 	IDCarona string `json:"id_carona"`
 }
 
 type Reserva struct {
+	// É a representação de saída: não expõe detalhes internos do domínio além
+	// do necessário para o passageiro consultar ou cancelar a própria reserva.
 	ID                 string             `json:"id"`
 	PassageiroID       string             `json:"passageiro_id"`
 	QuantidadeAssentos int                `json:"quantidade_assentos"`
@@ -132,6 +139,8 @@ type TrechoDoMotorista struct {
 }
 
 type CaronaDoMotorista struct {
+	// É a visão de uma carona para o motorista, incluindo passageiros somente
+	// dos trechos daquela carona.
 	ID        string              `json:"id"`
 	Cancelada bool                `json:"cancelada"`
 	Trechos   []TrechoDoMotorista `json:"trechos"`

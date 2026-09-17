@@ -41,6 +41,8 @@ func TestTrechoTemVagas(t *testing.T) {
 }
 
 func TestTrechoReservarSemVagasNaoAlteraDisponibilidade(t *testing.T) {
+	// Falhar ao reservar não pode reduzir a disponibilidade nem criar assentos
+	// negativos; esta é a invariante local básica de um trecho.
 	trecho := Trecho{
 		Capacidade:          4,
 		AssentosDisponiveis: 1,
@@ -78,6 +80,7 @@ func TestTrechoCancelarReservaDevolveAssentos(t *testing.T) {
 }
 
 func TestTrechoCancelarReservaNaoUltrapassaCapacidade(t *testing.T) {
+	// Um segundo cancelamento não pode fabricar vagas acima da capacidade original.
 	trecho := Trecho{
 		Capacidade:          4,
 		AssentosDisponiveis: 3,

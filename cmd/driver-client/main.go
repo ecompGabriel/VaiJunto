@@ -147,6 +147,8 @@ func consultarCaronas(cliente *clienttcp.Cliente) {
 	}
 
 	for _, carona := range caronas {
+		// A carona cancelada é exibida, e não escondida, para que o motorista
+		// diferencie um cancelamento anterior de uma carona nunca publicada.
 		fmt.Printf("\nCarona %s\n", carona.ID)
 		if carona.Cancelada {
 			fmt.Println("Status: cancelada")
@@ -183,6 +185,8 @@ func consultarCaronas(cliente *clienttcp.Cliente) {
 }
 
 func cancelarCarona(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
+	// A autorização real acontece no servidor a partir da sessão; o cliente só
+	// informa qual das próprias caronas o motorista deseja cancelar.
 	idCarona := lerTexto(leitor, "ID da carona a cancelar: ")
 
 	resposta, err := cliente.Enviar("cancelar_carona", protocol.CancelarCarona{
@@ -244,6 +248,8 @@ func lerRota(leitor *bufio.Reader) []string {
 }
 
 func lerCapacidade(leitor *bufio.Reader) int {
+	// A capacidade precisa ser positiva, pois cada trecho nasce com esse mesmo
+	// número de assentos disponíveis.
 	for {
 		textoCapacidade := lerTexto(leitor, "Capacidade do veículo: ")
 		capacidade, err := strconv.Atoi(textoCapacidade)
@@ -294,6 +300,7 @@ func converterDataHoraParaRFC3339(data string, hora string) (string, error) {
 }
 
 func validarHorarioFuturo(horarioRFC3339 string, agora time.Time) error {
+	// Evita publicar no terminal uma viagem que já começou ou já passou.
 	horarioSaida, err := time.Parse(time.RFC3339, horarioRFC3339)
 	if err != nil {
 		return err
@@ -334,6 +341,7 @@ func lerPrecosCentavos(leitor *bufio.Reader, rota []string) []int64 {
 }
 
 func lerDuracoesMinutos(leitor *bufio.Reader, rota []string) []int {
+	// Como a rota tem N cidades, há N-1 durações: uma para cada par consecutivo.
 	duracoes := make([]int, 0, len(rota)-1)
 
 	for i := 0; i < len(rota)-1; i++ {

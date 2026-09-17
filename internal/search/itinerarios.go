@@ -25,6 +25,8 @@ func BuscarItinerarios(
 	quantidadeAssentos int,
 	dataDesejada time.Time,
 ) ([]domain.Itinerario, error) {
+	// Esta é a porta pública do algoritmo de grafo. O servidor entrega uma cópia
+	// dos trechos ativos e a função devolve apenas opções, sem reservar vagas.
 	// Cada cidade é um vértice e cada trecho disponível é uma aresta dirigida.
 	origem = normalizarCidade(origem)
 	destino = normalizarCidade(destino)
@@ -157,5 +159,7 @@ func buscarCaminhos(
 }
 
 func normalizarCidade(cidade string) string {
+	// Espaços externos e diferenças de maiúsculas não devem impedir a busca de
+	// uma cidade que o motorista digitou com outra capitalização.
 	return strings.ToLower(strings.TrimSpace(cidade))
 }

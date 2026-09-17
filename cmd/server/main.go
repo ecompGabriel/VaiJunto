@@ -30,6 +30,8 @@ type sessaoConexao struct {
 }
 
 func main() {
+	// VAIJUNTO_LISTEN permite trocar a porta em Docker ou laboratório sem mudar
+	// nem recompilar o programa; sem configuração, o servidor usa :8080.
 	endereco := os.Getenv("VAIJUNTO_LISTEN")
 	if endereco == "" {
 		endereco = enderecoPadrao
@@ -43,6 +45,7 @@ func main() {
 
 	catalogo := store.NovoCatalogoCaronas()
 	usuarios := auth.NovoGerenciadorUsuarios()
+	// Estes dois catálogos são compartilhados por todas as goroutines de clientes.
 	log.Printf("servidor ouvindo em %s", endereco)
 
 	for {
@@ -109,6 +112,8 @@ func tratarRequisicao(
 	catalogo *store.CatalogoCaronas,
 	usuarios *auth.GerenciadorUsuarios,
 ) protocol.Resposta {
+	// Operações públicas são resolvidas antes de exigir sessão. Cadastro e login
+	// seriam impossíveis se o servidor exigisse uma sessão que ainda não existe.
 	// Versão e ID fazem parte de todas as operações para compatibilidade e para
 	// correlacionar uma resposta com a requisição que a originou.
 	if requisicao.Versao != protocol.VersaoAtual {
@@ -188,6 +193,8 @@ func tratarRegistrarUsuario(
 	requisicao protocol.Requisicao,
 	usuarios *auth.GerenciadorUsuarios,
 ) protocol.Resposta {
+	// Cadastro é público, mas a validação do perfil, ID e senha fica concentrada
+	// no gerenciador de usuários, e não no cliente que enviou o JSON.
 	var dados protocol.RegistrarUsuario
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -207,6 +214,8 @@ func tratarIniciarSessao(
 	sessao *sessaoConexao,
 	usuarios *auth.GerenciadorUsuarios,
 ) protocol.Resposta {
+	// Uma conexão só pode representar um usuário por vez. Ao autenticar, seu ID
+	// e perfil ficam na sessaoConexao até a conexão ser encerrada.
 	if sessao.UsuarioID != "" {
 		return respostaErro(requisicao.ID, "sessao_ja_iniciada", "esta conexão já possui uma sessão")
 	}
@@ -236,6 +245,8 @@ func tratarCriarCarona(
 	catalogo *store.CatalogoCaronas,
 	motoristaID string,
 ) protocol.Resposta {
+	// Converte o formato de rede para o domínio. O motorista vem da sessão para
+	// impedir que um cliente publique em nome de outro usuário.
 	var dados protocol.CriarCarona
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -272,6 +283,8 @@ func tratarBuscarItinerarios(
 	requisicao protocol.Requisicao,
 	catalogo *store.CatalogoCaronas,
 ) protocol.Resposta {
+	// A busca recebe trechos ativos como fotografia e transforma o resultado do
+	// domínio em estruturas próprias do protocolo antes de responder.
 	var dados protocol.BuscarItinerarios
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -330,6 +343,8 @@ func tratarConfirmarReserva(
 	catalogo *store.CatalogoCaronas,
 	passageiroID string,
 ) protocol.Resposta {
+	// Referências de protocolo são convertidas antes de chegar ao catálogo. A
+	// decisão atômica sobre vagas fica no catálogo, não neste adaptador TCP.
 	var dados protocol.ConfirmarReserva
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -362,6 +377,8 @@ func tratarConsultarReservas(
 	catalogo *store.CatalogoCaronas,
 	passageiroID string,
 ) protocol.Resposta {
+	// A requisição não precisa trazer passageiroID: a sessão impede consultar
+	// reservas de outro usuário simplesmente alterando o JSON.
 	var dados struct{}
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -382,6 +399,8 @@ func tratarCancelarReserva(
 	catalogo *store.CatalogoCaronas,
 	passageiroID string,
 ) protocol.Resposta {
+	// Assim como a confirmação, o cancelamento delega ao catálogo a alteração
+	// protegida das vagas e do status da reserva.
 	var dados protocol.CancelarReserva
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -401,6 +420,8 @@ func tratarCancelarCarona(
 	catalogo *store.CatalogoCaronas,
 	motoristaID string,
 ) protocol.Resposta {
+	// O catálogo verifica a propriedade e cancela reservas afetadas por inteiro;
+	// o servidor apenas adapta o pedido de rede a essa regra de negócio.
 	var dados protocol.CancelarCarona
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -420,6 +441,8 @@ func tratarListarCaronasMotorista(
 	catalogo *store.CatalogoCaronas,
 	motoristaID string,
 ) protocol.Resposta {
+	// A resposta não expõe o domínio diretamente: converte caronas, trechos e
+	// passageiros para o formato JSON definido em protocol.CaronaDoMotorista.
 	var dados struct{}
 	err := protocol.DecodificarEstrito(requisicao.Dados, &dados)
 	if err != nil {
@@ -464,6 +487,7 @@ func tratarListarCaronasMotorista(
 }
 
 func reservaParaProtocolo(reserva domain.Reserva) protocol.Reserva {
+	// Função de conversão reutilizada tanto após confirmar quanto ao consultar.
 	referenciasDominio := reserva.Trechos()
 	referencias := make([]protocol.ReferenciaTrecho, 0, len(referenciasDominio))
 
@@ -484,6 +508,7 @@ func reservaParaProtocolo(reserva domain.Reserva) protocol.Reserva {
 }
 
 func respostaSucesso(id string, mensagem string, dados any) protocol.Resposta {
+	// Centraliza o envelope de sucesso e serializa o corpo opcional uma única vez.
 	resposta := protocol.Resposta{
 		Versao:   protocol.VersaoAtual,
 		ID:       id,
@@ -506,6 +531,8 @@ func respostaSucesso(id string, mensagem string, dados any) protocol.Resposta {
 }
 
 func respostaErro(id string, codigo string, mensagem string) protocol.Resposta {
+	// Erros de negócio viajam como resposta válida (Sucesso false), diferente de
+	// uma falha técnica de rede, que é devolvida pelo tipo error do Go.
 	return protocol.Resposta{
 		Versao:   protocol.VersaoAtual,
 		ID:       id,
