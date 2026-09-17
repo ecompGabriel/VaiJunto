@@ -61,7 +61,7 @@ memória. Reiniciar o servidor apaga esse estado.
 Para conectar a outro computador:
 
 ```bash
-VAIJUNTO_SERVER=192.168.0.10:8080 go run ./cmd/passenger-client
+VAIJUNTO_SERVER=IP_DO_SERVIDOR:8080 go run ./cmd/passenger-client
 ```
 
 O servidor escuta em `:8080` por padrão. A variável `VAIJUNTO_LISTEN` permite
@@ -110,13 +110,14 @@ computador servidor e informe o IP dele:
 ```bash
 docker build -t vaijunto .
 docker run --rm -it \
-  -e VAIJUNTO_SERVER=192.168.0.10:8080 \
+  -e VAIJUNTO_SERVER=IP_DO_SERVIDOR:8080 \
   vaijunto /app/passenger-client
 ```
 
-As redes internas do Docker não atravessam computadores. A comunicação remota
-usa o IP da máquina que executa o servidor e a porta publicada `8080`. O firewall
-da máquina servidora deve permitir TCP nessa porta.
+As redes internas do Docker não atravessam computadores. Substitua
+`IP_DO_SERVIDOR` pelo IP real da máquina que executa o servidor, obtido com
+`hostname -I`, e use a porta publicada `8080`. O firewall da máquina servidora
+deve permitir TCP nessa porta.
 
 ## Regras de concorrência
 
