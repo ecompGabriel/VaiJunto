@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	"vaijunto/internal/domain"
 )
@@ -14,9 +15,16 @@ const (
 	maximoTrechosPorItinerario = 8
 	maximoCandidatos           = 1000
 	maximoResultados           = 20
+	tempoMinimoConexao         = 30 * time.Minute
 )
 
-func BuscarItinerarios(trechos []domain.Trecho, origem string, destino string, quantidadeAssentos int) ([]domain.Itinerario, error) {
+func BuscarItinerarios(
+	trechos []domain.Trecho,
+	origem string,
+	destino string,
+	quantidadeAssentos int,
+	dataDesejada time.Time,
+) ([]domain.Itinerario, error) {
 	// Cada cidade é um vértice e cada trecho disponível é uma aresta dirigida.
 	origem = normalizarCidade(origem)
 	destino = normalizarCidade(destino)
@@ -32,6 +40,9 @@ func BuscarItinerarios(trechos []domain.Trecho, origem string, destino string, q
 	if quantidadeAssentos <= 0 {
 		return nil, errors.New("a quantidade de assentos deve ser positiva")
 	}
+	if dataDesejada.IsZero() {
+		return nil, errors.New("a data desejada é obrigatória")
+	}
 
 	itinerarios := make([]domain.Itinerario, 0)
 
@@ -46,6 +57,7 @@ func BuscarItinerarios(trechos []domain.Trecho, origem string, destino string, q
 		nil,
 		cidadesVisitadas,
 		&itinerarios,
+		dataDesejada,
 	)
 
 	// A interface apresenta primeiro o itinerário de menor preço total.
@@ -68,6 +80,7 @@ func buscarCaminhos(
 	caminhoAtual []domain.Trecho,
 	cidadesVisitadas map[string]bool,
 	itinerarios *[]domain.Itinerario,
+	horarioDisponivel time.Time,
 ) {
 	// Esta é uma busca em profundidade (DFS): o caminho atual é estendido até
 	// chegar ao destino ou até uma condição de parada.
@@ -103,6 +116,19 @@ func buscarCaminhos(
 			continue
 		}
 
+		// A primeira carona pode partir na data desejada ou depois. Ao trocar de
+		// motorista, o passageiro precisa de 30 minutos para fazer a conexão.
+		limiteSaida := horarioDisponivel
+		if len(caminhoAtual) > 0 {
+			ultimoTrecho := caminhoAtual[len(caminhoAtual)-1]
+			if ultimoTrecho.CaronaID != trecho.CaronaID {
+				limiteSaida = limiteSaida.Add(tempoMinimoConexao)
+			}
+		}
+		if trecho.HorarioSaida.Before(limiteSaida) {
+			continue
+		}
+
 		destinoTrecho := normalizarCidade(trecho.Destino)
 
 		// Não visita a mesma cidade duas vezes no mesmo caminho, evitando ciclos.
@@ -123,6 +149,7 @@ func buscarCaminhos(
 			proximoCaminho,
 			cidadesVisitadas,
 			itinerarios,
+			trecho.HorarioChegada,
 		)
 
 		delete(cidadesVisitadas, destinoTrecho)

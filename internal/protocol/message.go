@@ -53,11 +53,12 @@ type SessaoIniciada struct {
 
 type CriarCarona struct {
 	// Corpo específico da operação criar_carona.
-	ID             string   `json:"id"`
-	HorarioSaida   string   `json:"horario_saida"`
-	Rota           []string `json:"rota"`
-	Capacidade     int      `json:"capacidade"`
-	PrecosCentavos []int64  `json:"precos_centavos"`
+	ID              string   `json:"id"`
+	HorarioSaida    string   `json:"horario_saida"`
+	Rota            []string `json:"rota"`
+	Capacidade      int      `json:"capacidade"`
+	PrecosCentavos  []int64  `json:"precos_centavos"`
+	DuracoesMinutos []int    `json:"duracoes_minutos"`
 }
 
 type BuscarItinerarios struct {
@@ -65,6 +66,7 @@ type BuscarItinerarios struct {
 	Origem             string `json:"origem"`
 	Destino            string `json:"destino"`
 	QuantidadeAssentos int    `json:"quantidade_assentos"`
+	DataDesejada       string `json:"data_desejada"`
 }
 
 type ItinerarioEncontrado struct {
@@ -81,6 +83,8 @@ type TrechoEncontrado struct {
 	Destino             string `json:"destino"`
 	PrecoCentavos       int64  `json:"preco_centavos"`
 	AssentosDisponiveis int    `json:"assentos_disponiveis"`
+	HorarioSaida        string `json:"horario_saida"`
+	HorarioChegada      string `json:"horario_chegada"`
 }
 
 type ReferenciaTrecho struct {
@@ -118,6 +122,8 @@ type TrechoDoMotorista struct {
 	Destino             string                 `json:"destino"`
 	Capacidade          int                    `json:"capacidade"`
 	AssentosDisponiveis int                    `json:"assentos_disponiveis"`
+	HorarioSaida        string                 `json:"horario_saida"`
+	HorarioChegada      string                 `json:"horario_chegada"`
 	Passageiros         []PassageiroConfirmado `json:"passageiros"`
 }
 

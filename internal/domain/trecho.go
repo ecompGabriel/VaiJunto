@@ -1,6 +1,9 @@
 package domain
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type Trecho struct {
 	// Ordem diferencia os trechos da mesma carona: uma rota A-B-C possui os
@@ -12,6 +15,8 @@ type Trecho struct {
 	Capacidade          int
 	AssentosDisponiveis int
 	PrecoCentavos       int64
+	HorarioSaida        time.Time
+	HorarioChegada      time.Time
 }
 
 func (t Trecho) TemVagas(quantidadeSolicitada int) bool {

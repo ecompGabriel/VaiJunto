@@ -182,6 +182,7 @@ func TestNovaCaronaCriaTrechos(t *testing.T) {
 		[]string{"Feira", "Alagoinhas", "Salvador"},
 		4,
 		[]int64{1500, 2000},
+		[]int{60, 90},
 	)
 	if err != nil {
 		t.Fatalf("não esperava erro ao criar carona: %v", err)
@@ -203,6 +204,9 @@ func TestNovaCaronaCriaTrechos(t *testing.T) {
 	if primeiroTrecho.Capacidade != 4 || primeiroTrecho.AssentosDisponiveis != 4 || primeiroTrecho.PrecoCentavos != 1500 {
 		t.Error("capacidade, disponibilidade ou preço do primeiro trecho estão incorretos")
 	}
+	if !primeiroTrecho.HorarioSaida.Equal(horario) || !primeiroTrecho.HorarioChegada.Equal(horario.Add(time.Hour)) {
+		t.Error("horários do primeiro trecho estão incorretos")
+	}
 
 	segundoTrecho := carona.trechos[1]
 	if segundoTrecho.Ordem != 1 || segundoTrecho.Origem != "Alagoinhas" || segundoTrecho.Destino != "Salvador" || segundoTrecho.PrecoCentavos != 2000 {
@@ -218,6 +222,7 @@ func TestNovaCaronaRejeitaRotaInvalida(t *testing.T) {
 		[]string{"Feira"},
 		4,
 		[]int64{},
+		[]int{},
 	)
 
 	if err == nil {
@@ -233,6 +238,7 @@ func TestNovaCaronaRejeitaCapacidadeInvalida(t *testing.T) {
 		[]string{"Feira", "Salvador"},
 		0,
 		[]int64{2000},
+		[]int{60},
 	)
 
 	if err == nil {
@@ -248,6 +254,7 @@ func TestNovaCaronaRejeitaPrecosInvalidos(t *testing.T) {
 		[]string{"Feira", "Alagoinhas", "Salvador"},
 		4,
 		[]int64{1500},
+		[]int{60, 90},
 	)
 
 	if err == nil {
@@ -261,9 +268,38 @@ func TestNovaCaronaRejeitaPrecosInvalidos(t *testing.T) {
 		[]string{"Feira", "Salvador"},
 		4,
 		[]int64{-1},
+		[]int{60},
 	)
 
 	if err == nil {
 		t.Error("esperava erro para preço negativo")
+	}
+}
+
+func TestNovaCaronaRejeitaDuracoesInvalidas(t *testing.T) {
+	_, err := NovaCarona(
+		"carona-1",
+		"motorista-1",
+		time.Now(),
+		[]string{"Feira", "Alagoinhas", "Salvador"},
+		4,
+		[]int64{1500, 2000},
+		[]int{60},
+	)
+	if err == nil {
+		t.Error("esperava erro para quantidade de durações diferente da quantidade de trechos")
+	}
+
+	_, err = NovaCarona(
+		"carona-1",
+		"motorista-1",
+		time.Now(),
+		[]string{"Feira", "Salvador"},
+		4,
+		[]int64{2000},
+		[]int{0},
+	)
+	if err == nil {
+		t.Error("esperava erro para duração igual a zero")
 	}
 }

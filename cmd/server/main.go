@@ -248,6 +248,7 @@ func tratarCriarCarona(
 		dados.Rota,
 		dados.Capacidade,
 		dados.PrecosCentavos,
+		dados.DuracoesMinutos,
 	)
 	if err != nil {
 		return respostaErro(requisicao.ID, "carona_invalida", err.Error())
@@ -270,12 +271,17 @@ func tratarBuscarItinerarios(
 	if err != nil {
 		return respostaErro(requisicao.ID, "dados_invalidos", "dados da busca inválidos")
 	}
+	dataDesejada, err := time.Parse(time.RFC3339, dados.DataDesejada)
+	if err != nil {
+		return respostaErro(requisicao.ID, "data_invalida", "data desejada inválida")
+	}
 
 	itinerarios, err := search.BuscarItinerarios(
 		catalogo.ListarTrechos(),
 		dados.Origem,
 		dados.Destino,
 		dados.QuantidadeAssentos,
+		dataDesejada,
 	)
 	if err != nil {
 		return respostaErro(requisicao.ID, "busca_invalida", err.Error())
@@ -292,6 +298,8 @@ func tratarBuscarItinerarios(
 				Destino:             trecho.Destino,
 				PrecoCentavos:       trecho.PrecoCentavos,
 				AssentosDisponiveis: trecho.AssentosDisponiveis,
+				HorarioSaida:        trecho.HorarioSaida.Format(time.RFC3339),
+				HorarioChegada:      trecho.HorarioChegada.Format(time.RFC3339),
 			})
 		}
 
@@ -414,6 +422,8 @@ func tratarListarCaronasMotorista(
 				Destino:             trecho.Destino,
 				Capacidade:          trecho.Capacidade,
 				AssentosDisponiveis: trecho.AssentosDisponiveis,
+				HorarioSaida:        trecho.HorarioSaida.Format(time.RFC3339),
+				HorarioChegada:      trecho.HorarioChegada.Format(time.RFC3339),
 				Passageiros:         passageiros,
 			})
 		}

@@ -105,12 +105,14 @@ func buscarEReservar(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 	// A busca mostra possibilidades, mas a vaga só é garantida na confirmação.
 	origem := lerTexto(leitor, "Cidade de origem: ")
 	destino := lerTexto(leitor, "Cidade de destino: ")
+	dataDesejada := lerDataDesejada(leitor)
 	quantidadeAssentos := lerInteiroPositivo(leitor, "Quantidade de assentos: ")
 
 	dados := protocol.BuscarItinerarios{
 		Origem:             origem,
 		Destino:            destino,
 		QuantidadeAssentos: quantidadeAssentos,
+		DataDesejada:       dataDesejada,
 	}
 
 	var itinerarios []protocol.ItinerarioEncontrado
@@ -236,15 +238,38 @@ func mostrarItinerarios(itinerarios []protocol.ItinerarioEncontrado) {
 
 		for _, trecho := range itinerario.Trechos {
 			fmt.Printf(
-				"- %s → %s - R$ %d,%02d - %d vaga(s)\n",
+				"- %s → %s - %s até %s - R$ %d,%02d - %d vaga(s)\n",
 				trecho.Origem,
 				trecho.Destino,
+				formatarHorario(trecho.HorarioSaida),
+				formatarHorario(trecho.HorarioChegada),
 				trecho.PrecoCentavos/100,
 				trecho.PrecoCentavos%100,
 				trecho.AssentosDisponiveis,
 			)
 		}
 	}
+}
+
+func lerDataDesejada(leitor *bufio.Reader) string {
+	for {
+		texto := lerTexto(leitor, "Data desejada para saída (dd/mm/aaaa): ")
+		fusoBrasil := time.FixedZone("BRT", -3*60*60)
+		data, err := time.ParseInLocation("02/01/2006", texto, fusoBrasil)
+		if err != nil {
+			fmt.Println("Data inválida; use dd/mm/aaaa.")
+			continue
+		}
+		return data.Format(time.RFC3339)
+	}
+}
+
+func formatarHorario(horarioRFC3339 string) string {
+	horario, err := time.Parse(time.RFC3339, horarioRFC3339)
+	if err != nil {
+		return horarioRFC3339
+	}
+	return horario.Format("02/01 15:04")
 }
 
 func novoIDReserva() string {

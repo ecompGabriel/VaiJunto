@@ -86,12 +86,16 @@ TLS.
   "horario_saida": "2026-09-17T08:00:00-03:00",
   "rota": ["Feira", "Alagoinhas", "Salvador"],
   "capacidade": 4,
-  "precos_centavos": [1000, 1500]
+  "precos_centavos": [1000, 1500],
+  "duracoes_minutos": [90, 120]
 }
 ```
 
 Uma rota com três cidades produz dois trechos. Preços são inteiros em centavos.
-O motorista é obtido da sessão, não do JSON enviado pelo cliente.
+Cada duração estimada é positiva e pertence ao trecho da mesma posição. O
+servidor calcula saída e chegada de cada trecho: a chegada de um trecho é a
+saída do seguinte trecho da mesma carona. O motorista é obtido da sessão, não
+do JSON enviado pelo cliente.
 
 ### `listar_caronas_motorista`
 
@@ -106,15 +110,21 @@ disponibilidade e passageiros confirmados com sua quantidade de assentos.
 {
   "origem": "FEIRA",
   "destino": "Salvador",
-  "quantidade_assentos": 2
+  "quantidade_assentos": 2,
+  "data_desejada": "2026-09-17T00:00:00-03:00"
 }
 ```
 
 As cidades são comparadas sem diferenciar maiúsculas e minúsculas. Cada opção
-contém os trechos, `carona_id`, `ordem`, preço e disponibilidade. Só são
+contém os trechos, `carona_id`, `ordem`, saída, chegada, preço e disponibilidade. Só são
 retornados caminhos com vagas suficientes em todos os trechos. Os resultados
 são ordenados por preço total crescente. A busca aceita até oito trechos por
 itinerário, examina no máximo mil candidatos e devolve no máximo 20 resultados.
+
+A primeira carona deve sair em `data_desejada` ou depois. Ao trocar de carona,
+a próxima saída precisa ocorrer pelo menos 30 minutos após a chegada anterior.
+Assim, o passageiro pode aguardar horas ou dias em uma cidade intermediária,
+mas não recebe uma conexão que já partiu.
 
 ### `confirmar_reserva`
 

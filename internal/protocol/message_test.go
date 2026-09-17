@@ -7,11 +7,12 @@ import (
 
 func TestRequisicaoCarregaDadosDeCriarCarona(t *testing.T) {
 	dadosOriginais := CriarCarona{
-		ID:             "carona-1",
-		HorarioSaida:   "2026-09-17T08:00:00-03:00",
-		Rota:           []string{"Feira", "Alagoinhas", "Salvador"},
-		Capacidade:     4,
-		PrecosCentavos: []int64{1500, 2000},
+		ID:              "carona-1",
+		HorarioSaida:    "2026-09-17T08:00:00-03:00",
+		Rota:            []string{"Feira", "Alagoinhas", "Salvador"},
+		Capacidade:      4,
+		PrecosCentavos:  []int64{1500, 2000},
+		DuracoesMinutos: []int{60, 90},
 	}
 
 	dadosJSON, err := json.Marshal(dadosOriginais)
@@ -116,6 +117,10 @@ func TestRequisicaoCarregaDadosDeCriarCarona(t *testing.T) {
 				precoOriginal,
 			)
 		}
+	}
+
+	if len(dadosRecebidos.DuracoesMinutos) != len(dadosOriginais.DuracoesMinutos) {
+		t.Fatalf("quantidade de durações = %d; esperava %d", len(dadosRecebidos.DuracoesMinutos), len(dadosOriginais.DuracoesMinutos))
 	}
 }
 

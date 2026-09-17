@@ -2,6 +2,7 @@ package search
 
 import (
 	"testing"
+	"time"
 
 	"vaijunto/internal/domain"
 )
@@ -28,7 +29,7 @@ func TestBuscarItinerariosEncontraCaminhoComDoisTrechos(t *testing.T) {
 		},
 	}
 
-	itinerarios, err := BuscarItinerarios(trechos, "Feira", "Salvador", 1)
+	itinerarios, err := BuscarItinerarios(trechosComHorarios(trechos), "Feira", "Salvador", 1, dataDeTeste())
 	if err != nil {
 		t.Fatalf("não esperava erro na busca: %v", err)
 	}
@@ -71,7 +72,7 @@ func TestBuscarItinerariosOrdenaPeloMenorPreco(t *testing.T) {
 		},
 	}
 
-	itinerarios, err := BuscarItinerarios(trechos, "Feira", "Salvador", 1)
+	itinerarios, err := BuscarItinerarios(trechosComHorarios(trechos), "Feira", "Salvador", 1, dataDeTeste())
 	if err != nil {
 		t.Fatalf("não esperava erro na busca: %v", err)
 	}
@@ -100,7 +101,7 @@ func TestBuscarItinerariosIgnoraTrechoSemVagas(t *testing.T) {
 		},
 	}
 
-	itinerarios, err := BuscarItinerarios(trechos, "Feira", "Salvador", 2)
+	itinerarios, err := BuscarItinerarios(trechosComHorarios(trechos), "Feira", "Salvador", 2, dataDeTeste())
 	if err != nil {
 		t.Fatalf("não esperava erro na busca: %v", err)
 	}
@@ -122,7 +123,7 @@ func TestBuscarItinerariosNaoDiferenciaMaiusculasEMinusculas(t *testing.T) {
 		},
 	}
 
-	itinerarios, err := BuscarItinerarios(trechos, "  FEIRA ", "sAlVaDoR", 1)
+	itinerarios, err := BuscarItinerarios(trechosComHorarios(trechos), "  FEIRA ", "sAlVaDoR", 1, dataDeTeste())
 	if err != nil {
 		t.Fatalf("não esperava erro na busca: %v", err)
 	}
@@ -141,7 +142,7 @@ func TestBuscarItinerariosNaoDiferenciaMaiusculasEMinusculas(t *testing.T) {
 }
 
 func TestBuscarItinerariosRejeitaQuantidadeInvalida(t *testing.T) {
-	itinerarios, err := BuscarItinerarios(nil, "Feira", "Salvador", 0)
+	itinerarios, err := BuscarItinerarios(nil, "Feira", "Salvador", 0, dataDeTeste())
 
 	if err == nil {
 		t.Fatal("esperava erro para quantidade de assentos igual a zero")
@@ -150,4 +151,73 @@ func TestBuscarItinerariosRejeitaQuantidadeInvalida(t *testing.T) {
 	if itinerarios != nil {
 		t.Errorf("itinerários = %v; esperava nil", itinerarios)
 	}
+}
+
+func TestBuscarItinerariosAceitaConexaoComEsperaDeTrintaMinutos(t *testing.T) {
+	data := dataDeTeste()
+	trechos := []domain.Trecho{
+		{CaronaID: "feira-alagoinhas", Origem: "Feira", Destino: "Alagoinhas", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 1000, HorarioSaida: data.Add(8 * time.Hour), HorarioChegada: data.Add(10 * time.Hour)},
+		{CaronaID: "alagoinhas-aracaju", Origem: "Alagoinhas", Destino: "Aracaju", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 2500, HorarioSaida: data.Add(10*time.Hour + 30*time.Minute), HorarioChegada: data.Add(16 * time.Hour)},
+	}
+
+	itinerarios, err := BuscarItinerarios(trechos, "Feira", "Aracaju", 1, data)
+	if err != nil {
+		t.Fatalf("não esperava erro na busca: %v", err)
+	}
+	if len(itinerarios) != 1 {
+		t.Fatalf("quantidade de itinerários = %d; esperava 1", len(itinerarios))
+	}
+}
+
+func TestBuscarItinerariosRejeitaConexaoQueJaPartiu(t *testing.T) {
+	data := dataDeTeste()
+	trechos := []domain.Trecho{
+		{CaronaID: "feira-alagoinhas", Origem: "Feira", Destino: "Alagoinhas", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 1000, HorarioSaida: data.Add(8 * time.Hour), HorarioChegada: data.Add(10 * time.Hour)},
+		{CaronaID: "alagoinhas-aracaju", Origem: "Alagoinhas", Destino: "Aracaju", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 2500, HorarioSaida: data.Add(9 * time.Hour), HorarioChegada: data.Add(15 * time.Hour)},
+	}
+
+	itinerarios, err := BuscarItinerarios(trechos, "Feira", "Aracaju", 1, data)
+	if err != nil {
+		t.Fatalf("não esperava erro na busca: %v", err)
+	}
+	if len(itinerarios) != 0 {
+		t.Errorf("quantidade de itinerários = %d; esperava 0", len(itinerarios))
+	}
+}
+
+func TestBuscarItinerariosAceitaEsperaDeDiasEntreCaronas(t *testing.T) {
+	data := dataDeTeste()
+	trechos := []domain.Trecho{
+		{CaronaID: "feira-alagoinhas", Origem: "Feira", Destino: "Alagoinhas", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 1000, HorarioSaida: data.Add(8 * time.Hour), HorarioChegada: data.Add(10 * time.Hour)},
+		{CaronaID: "alagoinhas-aracaju", Origem: "Alagoinhas", Destino: "Aracaju", Capacidade: 2, AssentosDisponiveis: 2, PrecoCentavos: 2500, HorarioSaida: data.AddDate(0, 0, 2).Add(8 * time.Hour), HorarioChegada: data.AddDate(0, 0, 2).Add(14 * time.Hour)},
+	}
+
+	itinerarios, err := BuscarItinerarios(trechos, "Feira", "Aracaju", 1, data)
+	if err != nil {
+		t.Fatalf("não esperava erro na busca: %v", err)
+	}
+	if len(itinerarios) != 1 {
+		t.Fatalf("quantidade de itinerários = %d; esperava 1", len(itinerarios))
+	}
+}
+
+func dataDeTeste() time.Time {
+	return time.Date(2026, time.September, 17, 0, 0, 0, 0, time.FixedZone("BRT", -3*60*60))
+}
+
+func trechosComHorarios(trechos []domain.Trecho) []domain.Trecho {
+	proximosHorarios := make(map[string]time.Time)
+	data := dataDeTeste()
+
+	for indice := range trechos {
+		horarioSaida := proximosHorarios[trechos[indice].CaronaID]
+		if horarioSaida.IsZero() {
+			horarioSaida = data.Add(8 * time.Hour)
+		}
+		trechos[indice].HorarioSaida = horarioSaida
+		trechos[indice].HorarioChegada = horarioSaida.Add(time.Hour)
+		proximosHorarios[trechos[indice].CaronaID] = trechos[indice].HorarioChegada
+	}
+
+	return trechos
 }

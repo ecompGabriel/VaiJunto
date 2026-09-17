@@ -83,6 +83,7 @@ func TestVariosClientesTCPNaoCausamOverbooking(t *testing.T) {
 		[]string{"Feira", "Salvador"},
 		5,
 		[]int64{2000},
+		[]int{60},
 	)
 	if err != nil {
 		t.Fatalf("não esperava erro ao criar carona: %v", err)

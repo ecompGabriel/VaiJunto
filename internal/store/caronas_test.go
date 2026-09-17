@@ -19,6 +19,7 @@ func novaCaronaDeTeste(t *testing.T, id string) *domain.Carona {
 		[]string{"Feira", "Salvador"},
 		4,
 		[]int64{2000},
+		[]int{60},
 	)
 	if err != nil {
 		t.Fatalf("não esperava erro ao criar carona de teste: %v", err)
@@ -37,6 +38,7 @@ func novaCaronaComRotaDeTeste(t *testing.T, id string, capacidade int) *domain.C
 		[]string{"Feira", "Alagoinhas", "Salvador"},
 		capacidade,
 		[]int64{1000, 1500},
+		[]int{60, 90},
 	)
 	if err != nil {
 		t.Fatalf("não esperava erro ao criar carona de teste: %v", err)

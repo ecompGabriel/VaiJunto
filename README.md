@@ -7,8 +7,8 @@ TCP/IP usando JSON.
 ## Funcionalidades
 
 - cadastro e autenticação em memória de motoristas e passageiros;
-- publicação de caronas com rota, horário, capacidade e preço por trecho;
-- busca de itinerários, inclusive combinando caronas diferentes;
+- publicação de caronas com rota, horário, duração, capacidade e preço por trecho;
+- busca de itinerários, inclusive combinando caronas diferentes e respeitando horários;
 - comparação de cidades sem diferenciar maiúsculas e minúsculas;
 - confirmação atômica de todos os trechos de uma reserva;
 - consulta e cancelamento de reservas pelo passageiro;
@@ -121,6 +121,8 @@ da máquina servidora deve permitir TCP nessa porta.
 ## Regras de concorrência
 
 - a busca é apenas uma fotografia e não garante disponibilidade futura;
+- a primeira saída ocorre na data escolhida ou depois; ao trocar de carona, o
+  passageiro precisa de pelo menos 30 minutos para a conexão;
 - a confirmação revalida todos os trechos com o mutex travado;
 - todos os trechos são reservados ou nenhum é;
 - o cancelamento pertence ao passageiro que criou a reserva;
@@ -132,10 +134,8 @@ da máquina servidora deve permitir TCP nessa porta.
 - os dados não são persistidos em banco ou arquivo;
 - a senha é armazenada apenas como hash com salt, mas trafega em TCP sem TLS;
 - a sessão dura enquanto a conexão TCP permanecer aberta ou até o timeout;
-- o enunciado não fornece horários de chegada por cidade. A busca combina
-  trechos por cidade e disponibilidade, sem validar o tempo de conexão entre
-  caronas. Essa regra precisa de validação do tutor antes de uma versão final de
-  produção;
+- as durações são estimadas pelo motorista e não consideram atrasos reais,
+  trânsito ou cancelamentos de viagem;
 - a busca limita ciclos por cidade visitada e retorna no máximo 20 resultados
   com até oito trechos cada.
 

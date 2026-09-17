@@ -110,7 +110,15 @@ func (carona Carona) PrecosEntre(origem string, destino string) (int64, error) {
 	return precoTotal, nil
 }
 
-func NovaCarona(id string, motoristaID string, horarioSaida time.Time, rota []string, capacidade int, precosCentavos []int64) (*Carona, error) {
+func NovaCarona(
+	id string,
+	motoristaID string,
+	horarioSaida time.Time,
+	rota []string,
+	capacidade int,
+	precosCentavos []int64,
+	duracoesMinutos []int,
+) (*Carona, error) {
 	if len(rota) < 2 {
 		return nil, errors.New("a rota precisa ter ao menos duas cidades")
 	}
@@ -123,14 +131,23 @@ func NovaCarona(id string, motoristaID string, horarioSaida time.Time, rota []st
 	if len(precosCentavos) != quantidadeTrechos {
 		return nil, errors.New("a quantidade de preços deve ser igual à quantidade de trechos")
 	}
+	if len(duracoesMinutos) != quantidadeTrechos {
+		return nil, errors.New("a quantidade de durações deve ser igual à quantidade de trechos")
+	}
 
 	trechos := make([]Trecho, 0, quantidadeTrechos)
+	horarioTrecho := horarioSaida
 	// Cidades adjacentes da rota geram trechos independentes: A→B e B→C têm
 	// disponibilidade própria, mesmo pertencendo à mesma carona.
 	for i := 0; i < quantidadeTrechos; i++ {
 		if precosCentavos[i] < 0 {
 			return nil, errors.New("o preço de um trecho não pode ser negativo")
 		}
+		if duracoesMinutos[i] <= 0 {
+			return nil, errors.New("a duração de um trecho deve ser maior que zero")
+		}
+
+		horarioChegada := horarioTrecho.Add(time.Duration(duracoesMinutos[i]) * time.Minute)
 
 		trechos = append(trechos, Trecho{
 			CaronaID:            id,
@@ -140,7 +157,10 @@ func NovaCarona(id string, motoristaID string, horarioSaida time.Time, rota []st
 			Capacidade:          capacidade,
 			AssentosDisponiveis: capacidade,
 			PrecoCentavos:       precosCentavos[i],
+			HorarioSaida:        horarioTrecho,
+			HorarioChegada:      horarioChegada,
 		})
+		horarioTrecho = horarioChegada
 	}
 
 	return &Carona{

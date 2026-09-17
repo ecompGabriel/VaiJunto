@@ -105,13 +105,15 @@ func publicarCarona(leitor *bufio.Reader, cliente *clienttcp.Cliente) {
 	rota := lerRota(leitor)
 	capacidade := lerCapacidade(leitor)
 	precosCentavos := lerPrecosCentavos(leitor, rota)
+	duracoesMinutos := lerDuracoesMinutos(leitor, rota)
 
 	dados := protocol.CriarCarona{
-		ID:             id,
-		HorarioSaida:   horarioSaida,
-		Rota:           rota,
-		Capacidade:     capacidade,
-		PrecosCentavos: precosCentavos,
+		ID:              id,
+		HorarioSaida:    horarioSaida,
+		Rota:            rota,
+		Capacidade:      capacidade,
+		PrecosCentavos:  precosCentavos,
+		DuracoesMinutos: duracoesMinutos,
 	}
 
 	resposta, err := cliente.Enviar("criar_carona", dados, nil)
@@ -145,12 +147,14 @@ func consultarCaronas(cliente *clienttcp.Cliente) {
 		fmt.Printf("\nCarona %s\n", carona.ID)
 		for _, trecho := range carona.Trechos {
 			fmt.Printf(
-				"- Trecho %d: %s → %s - %d/%d vaga(s) disponível(is)\n",
+				"- Trecho %d: %s → %s - %d/%d vaga(s) - %s até %s\n",
 				trecho.Ordem,
 				trecho.Origem,
 				trecho.Destino,
 				trecho.AssentosDisponiveis,
 				trecho.Capacidade,
+				formatarHorario(trecho.HorarioSaida),
+				formatarHorario(trecho.HorarioChegada),
 			)
 
 			if len(trecho.Passageiros) == 0 {
@@ -301,6 +305,41 @@ func lerPrecosCentavos(leitor *bufio.Reader, rota []string) []int64 {
 	}
 
 	return precosCentavos
+}
+
+func lerDuracoesMinutos(leitor *bufio.Reader, rota []string) []int {
+	duracoes := make([]int, 0, len(rota)-1)
+
+	for i := 0; i < len(rota)-1; i++ {
+		pergunta := fmt.Sprintf(
+			"Duração estimada de %s até %s, em minutos: ",
+			rota[i],
+			rota[i+1],
+		)
+		duracoes = append(duracoes, lerInteiroPositivo(leitor, pergunta))
+	}
+
+	return duracoes
+}
+
+func lerInteiroPositivo(leitor *bufio.Reader, pergunta string) int {
+	for {
+		texto := lerTexto(leitor, pergunta)
+		valor, err := strconv.Atoi(texto)
+		if err != nil || valor <= 0 {
+			fmt.Println("Digite um número inteiro maior que zero.")
+			continue
+		}
+		return valor
+	}
+}
+
+func formatarHorario(horarioRFC3339 string) string {
+	horario, err := time.Parse(time.RFC3339, horarioRFC3339)
+	if err != nil {
+		return horarioRFC3339
+	}
+	return horario.Format("02/01 15:04")
 }
 
 func converterReaisParaCentavos(textoPreco string) (int64, error) {
